@@ -55,6 +55,18 @@ jobs:
           cp -a /opt/Gmeek/backup ${{ github.workspace }}
           cp /opt/Gmeek/blogBase.json ${{ github.workspace }}
 
+      - name: 恢复 Mavis 推送的 premarket.html
+        run: |
+          # Gmeek 在 runAll 模式下会重写整个 docs/，把不在它认知里的文件（包括
+          # Mavis 推送的 premarket.html）从 working tree 中删掉。这里从 git HEAD
+          # 把它恢复回来，保证 commit 后 GitHub Pages 仍然有正确的盘前速览页面。
+          if git cat-file -e HEAD:docs/premarket.html 2>/dev/null; then
+            git checkout HEAD -- docs/premarket.html
+            echo "✓ premarket.html 已从 HEAD 恢复"
+          else
+            echo "⚠ HEAD 中无 premarket.html，跳过恢复"
+          fi
+
       - name: update html
         run: |
           git config --local user.email "$(jq -r ".email" config.json)"
