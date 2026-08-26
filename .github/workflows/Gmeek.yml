@@ -4,14 +4,14 @@ on:
   workflow_dispatch:
   issues:
     types: [opened, edited]
-  schedule:
-    - cron: "0 16 * * *"
-    
+# 注：原 schedule 触发器（每天 16:00 UTC）已删除。
+# 原因：定时触发时无 issue 上下文，issue_number=None 导致 Gmeek KeyError。
+# 现在只通过 issues (opened/edited) 或 workflow_dispatch 触发。
 jobs:
   build:
     name: Generate blog
     runs-on: ubuntu-24.04
-    if: ${{ github.event.repository.owner.id == github.event.sender.id || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event.repository.owner.id == github.event.sender.id || github.event_name == 'workflow_dispatch' }}
     permissions: write-all
     steps:
       - name: Checkout
