@@ -75,27 +75,7 @@ jobs:
           git commit -a -m '🎉auto update by Gmeek action' || echo "nothing to commit"
           git push || echo "nothing to push"
           sleep 3
-          
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: 'docs/.'
-          
-  deploy:
-    name: Deploy blog
-    runs-on: ubuntu-24.04
-    needs: build
-    permissions:
-      contents: write
-      pages: write
-      id-token: write
-    concurrency:
-      group: "pages"
-      cancel-in-progress: false
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+
+# 注：原本有 Upload artifact + Deploy blog 两个 job 用于通过 actions 部署 Pages。
+# 现在 Pages 改用 legacy 模式（从 main 分支 docs/ 直接服务），所以这两个 job 已删除。
+# Gmeek 跑完后只需要 git push main 即可，Pages 会自动从 docs/ 渲染。
