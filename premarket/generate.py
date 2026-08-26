@@ -61,20 +61,30 @@ def fetch_yahoo(ticker, period="10d"):
         df = yf.download(ticker, period=period, progress=False, timeout=20)
         if df is None or df.empty or len(df) < 2:
             return None, None, None
-        # 去掉时区
         idx = df.index
         if idx.tz is not None:
             idx = idx.tz_convert(None)
         df.index = idx
-        last = df["Close"].iloc[-1]
-        prev = df["Close"].iloc[-2]
+        # yfinance 1.x 的 .iloc[-1] 在单 ticker 时返回 Series，多 ticker 时返回标量
+        # 用 .squeeze() 统一处理
+        last_series = df["Close"].iloc[-1]
+        prev_series = df["Close"].iloc[-2]
+        if hasattr(last_series, "item"):
+            last = last_series.item()
+        else:
+            last = float(last_series)
+        if hasattr(prev_series, "item"):
+            prev = prev_series.item()
+        else:
+            prev = float(prev_series)
         return float(last), float(prev), idx[-1].strftime("%Y-%m-%d")
     except Exception as e:
         print(f"  [WARN] {ticker}: {e}", file=sys.stderr)
         return None, None, None
 
 def fetch_us_treasury_yields():
-    """抓美国财政部每日国债收益率曲线"""
+    """抓美国财政部每日国债收益率曲线。返回 (t2, t2p, t10, t10p, t30, t30p, tdate)"""
+    import csv
     url = (
         "https://home.treasury.gov/resource-center/data-chart-center/"
         "interest-rates/daily-treasury-rates.csv/2026/all"
@@ -83,35 +93,36 @@ def fetch_us_treasury_yields():
     try:
         r = requests.get(url, timeout=30, headers={"User-Agent": "Mozilla/5.0"})
         r.raise_for_status()
-        lines = r.text.splitlines()
-        if not lines:
-            return None, None, None, None, None, None
-        header = lines[0].split(",")
+        # 用 csv 模块正确解析含引号的 header
+        reader = csv.reader(r.text.splitlines())
+        rows = [row for row in reader]
+        if not rows or len(rows) < 2:
+            return (None,) * 7
+        header = rows[0]
         col_map = {}
         for i, h in enumerate(header):
-            h = h.strip()
+            h = h.strip().strip('"')
             if h in ("2 Yr", "10 Yr", "30 Yr"):
                 col_map[h] = i
         if not all(k in col_map for k in ("2 Yr", "10 Yr", "30 Yr")):
-            print("  [WARN] Treasury CSV header 异常", file=sys.stderr)
-            return None, None, None, None, None, None
-        rows = []
-        for line in lines[1:]:
-            parts = line.split(",")
-            if len(parts) <= max(col_map.values()):
+            print(f"  [WARN] Treasury CSV header 异常: {header[:5]}...", file=sys.stderr)
+            return (None,) * 7
+        data_rows = []
+        for row in rows[1:]:
+            if len(row) <= max(col_map.values()):
                 continue
             try:
-                d = parts[0]
-                y2 = float(parts[col_map["2 Yr"]])
-                y10 = float(parts[col_map["10 Yr"]])
-                y30 = float(parts[col_map["30 Yr"]])
-                rows.append((d, y2, y10, y30))
+                d = row[0]
+                y2 = float(row[col_map["2 Yr"]])
+                y10 = float(row[col_map["10 Yr"]])
+                y30 = float(row[col_map["30 Yr"]])
+                data_rows.append((d, y2, y10, y30))
             except (ValueError, IndexError):
                 continue
-        if len(rows) < 2:
-            return None, None, None, None, None, None
-        today = rows[-1]
-        prev = rows[-2]
+        if len(data_rows) < 2:
+            return (None,) * 7
+        today = data_rows[-1]
+        prev = data_rows[-2]
         return (
             today[1], prev[1],
             today[2], prev[2],
@@ -120,7 +131,7 @@ def fetch_us_treasury_yields():
         )
     except Exception as e:
         print(f"  [WARN] Treasury: {e}", file=sys.stderr)
-        return None, None, None, None, None, None, None
+        return (None,) * 7
 
 # ============== 抓所有数据 ==============
 
@@ -155,12 +166,18 @@ def fetch_all():
         time.sleep(1)
 
     # 2) 港股/A50
+    # ^HSI = 恒生指数；HSTECH.HK = 恒生科技指数；A50 期货用 iShares FTSE A50 ETF (2823.HK) 作为代理
     hsi, hsi_p, hsi_d = fetch_yahoo("^HSI"); time.sleep(1)
-    hstech, hstech_p, hstech_d = fetch_yahoo("^HSTECH"); time.sleep(1)
-    a50, a50_p, a50_d = fetch_yahoo("^XIN9")
+    hstech, hstech_p, hstech_d = fetch_yahoo("HSTECH.HK")
+    if hstech is None:
+        time.sleep(1)
+        # 备选: 恒生科技 ETF (3033.HK)
+        hstech, hstech_p, hstech_d = fetch_yahoo("3033.HK")
+    time.sleep(1)
+    a50, a50_p, a50_d = fetch_yahoo("2823.HK")  # iShares FTSE A50 China Index ETF
     if a50 is None:
         time.sleep(1)
-        a50, a50_p, a50_d = fetch_yahoo("CN=F")
+        a50, a50_p, a50_d = fetch_yahoo("510050.SS")  # 备选: 上证50ETF
     time.sleep(1)
     data["hk_futures"] = {
         "hsi":     {"name": "恒指期货", "close": hsi,     "prev": hsi_p,     "date": hsi_d,     "chg": (hsi-hsi_p)     if hsi and hsi_p else None,     "pct": safe_pct(hsi, hsi_p)},
