@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'docs/**'
   workflow_dispatch:
 
 # 不设置 concurrency group，让 GitHub Pages 系统自己排队
