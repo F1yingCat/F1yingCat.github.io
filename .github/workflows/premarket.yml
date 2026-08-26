@@ -2,9 +2,10 @@ name: premarket daily update
 
 on:
   schedule:
-    # 每天 UTC 17:30 (北京时间次日 01:30) 跑 - Gmeek 在 16:00 UTC 跑完后执行
-    # cron: 分 时 日 月 周
-    - cron: '30 17 * * 1-5'
+    # 每天 UTC 00:45 (北京时间 08:45) 跑
+    # 上一交易日美股数据 + 当日亚太/外汇最新数据
+    # cron 语法: 分 时 日 月 周（UTC 时间）
+    - cron: '45 0 * * 1-5'
   workflow_dispatch:
     # 允许在 Actions 页面手动触发立即更新
 
