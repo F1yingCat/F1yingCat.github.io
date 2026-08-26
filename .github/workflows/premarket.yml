@@ -50,7 +50,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/premarket.html premarket/premarket-data.json
+          git add docs/premarket.html docs/premarket-data.json 2>/dev/null || git add docs/premarket.html
           # 如果没有变化就跳过 commit
           if git diff --cached --quiet; then
             echo "No changes to commit"
