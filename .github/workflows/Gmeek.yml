@@ -4,14 +4,14 @@ on:
   workflow_dispatch:
   issues:
     types: [opened, edited]
-# 注：原 schedule 触发器（每天 16:00 UTC）已删除。
-# 原因：定时触发时无 issue 上下文，issue_number=None 导致 Gmeek KeyError。
-# 现在只通过 issues (opened/edited) 或 workflow_dispatch 触发。
+  schedule:
+    - cron: "0 16 * * *"
+    
 jobs:
   build:
     name: Generate blog
     runs-on: ubuntu-24.04
-    if: ${{ github.event.repository.owner.id == github.event.sender.id || github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event.repository.owner.id == github.event.sender.id || github.event_name == 'schedule' }}
     permissions: write-all
     steps:
       - name: Checkout
@@ -51,22 +51,10 @@ jobs:
           cp -r ./* /opt/Gmeek/
           cd /opt/Gmeek/
           python Gmeek.py ${{ secrets.GITHUB_TOKEN }} ${{ github.repository }} --issue_number '${{ github.event.issue.number }}'
-          cp -a /opt/Gmeek/docs ${{ github.workspace }}
-          cp -a /opt/Gmeek/backup ${{ github.workspace }}
-          cp /opt/Gmeek/blogBase.json ${{ github.workspace }}
-
-      - name: 恢复 Mavis 推送的 premarket.html
-        run: |
-          # Gmeek 在 runAll 模式下会重写整个 docs/，把不在它认知里的文件（包括
-          # Mavis 推送的 premarket.html）从 working tree 中删掉。这里从 git HEAD
-          # 把它恢复回来，保证 commit 后 GitHub Pages 仍然有正确的盘前速览页面。
-          if git cat-file -e HEAD:docs/premarket.html 2>/dev/null; then
-            git checkout HEAD -- docs/premarket.html
-            echo "✓ premarket.html 已从 HEAD 恢复"
-          else
-            echo "⚠ HEAD 中无 premarket.html，跳过恢复"
-          fi
-
+          cp -a /opt/Gmeek/docs ${{ github.workspace }} 
+          cp -a /opt/Gmeek/backup ${{ github.workspace }} 
+          cp /opt/Gmeek/blogBase.json ${{ github.workspace }} 
+          
       - name: update html
         run: |
           git config --local user.email "$(jq -r ".email" config.json)"
@@ -75,7 +63,27 @@ jobs:
           git commit -a -m '🎉auto update by Gmeek action' || echo "nothing to commit"
           git push || echo "nothing to push"
           sleep 3
-
-# 注：原本有 Upload artifact + Deploy blog 两个 job 用于通过 actions 部署 Pages。
-# 现在 Pages 改用 legacy 模式（从 main 分支 docs/ 直接服务），所以这两个 job 已删除。
-# Gmeek 跑完后只需要 git push main 即可，Pages 会自动从 docs/ 渲染。
+          
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'docs/.'
+          
+  deploy:
+    name: Deploy blog
+    runs-on: ubuntu-24.04
+    needs: build
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    concurrency:
+      group: "pages"
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
