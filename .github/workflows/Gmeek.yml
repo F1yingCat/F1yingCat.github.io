@@ -54,7 +54,16 @@ jobs:
           cp -a /opt/Gmeek/docs ${{ github.workspace }} 
           cp -a /opt/Gmeek/backup ${{ github.workspace }} 
           cp /opt/Gmeek/blogBase.json ${{ github.workspace }} 
-          
+
+      - name: Generate premarket page
+        run: |
+          echo "====== 抓取行情并生成 premarket.html ======"
+          pip install --quiet yfinance requests
+          cd ${{ github.workspace }}
+          python premarket/generate.py --out docs/premarket.html
+          ls -la docs/premarket.html
+          head -3 docs/premarket.html
+
       - name: update html
         run: |
           git config --local user.email "$(jq -r ".email" config.json)"
