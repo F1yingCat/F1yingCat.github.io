@@ -8,10 +8,8 @@ on:
       - 'docs/**'
   workflow_dispatch:
 
-# 防止与 Gmeek 的 Pages deploy 并发
-concurrency:
-  group: pages
-  cancel-in-progress: false
+# 不设置 concurrency group，让 GitHub Pages 系统自己排队
+# （之前设了 group: pages 但旧 runs 卡在 queue 里，阻塞新 run）
 
 permissions:
   contents: read
