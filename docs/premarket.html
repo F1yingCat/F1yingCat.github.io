@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Pre-market 盘前速览 · 手机版</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<style>
+  :root{
+    --bg:#f4f6f9; --card:#ffffff; --ink:#1f2937; --sub:#6b7280;
+    --up:#e23c3c; --down:#1a9e57; --line:#e5e7eb; --accent:#2f5fd0;
+    --warn:#e8973c; --danger:#e23c3c;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    line-height:1.55;}
+  .wrap{max-width:480px;margin:0 auto;padding:14px 12px 44px;}
+  header.top{background:linear-gradient(135deg,#2f5fd0,#3f7be0);color:#fff;border-radius:14px;padding:18px 16px;margin-bottom:16px;}
+  header.top h1{margin:0 0 6px;font-size:18px;font-weight:700;line-height:1.35;}
+  header.top p{margin:0;font-size:12px;opacity:.92;}
+  .tag{display:inline-block;background:rgba(255,255,255,.18);border-radius:6px;padding:2px 9px;font-size:11px;margin:0 6px 6px 0;}
+  section{background:var(--card);border-radius:12px;padding:15px 14px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);}
+  section h2{margin:0 0 4px;font-size:15.5px;font-weight:700;display:flex;align-items:center;gap:7px;}
+  section h2 .bar{width:4px;height:16px;background:var(--accent);border-radius:2px;display:inline-block;}
+  .src{font-size:11px;color:var(--sub);margin:2px 0 12px;line-height:1.5;}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th,td{padding:8px 6px;text-align:right;border-bottom:1px solid var(--line);}
+  th:first-child,td:first-child{text-align:left;}
+  thead th{background:#f8fafc;color:var(--sub);font-weight:600;font-size:11px;}
+  tbody tr:hover{background:#fafbfe;}
+  .up{color:var(--up);font-weight:600;}
+  .down{color:var(--down);font-weight:600;}
+  .flat{color:var(--sub);font-weight:600;}
+  .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;color:var(--sub);}
+  .col-code{display:none;}
+  .pill{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;}
+  .pill.breach{background:#fde8e8;color:var(--danger);}
+  .pill.near{background:#fef3e2;color:var(--warn);}
+  .pill.ok{background:#e8f6ee;color:var(--down);}
+  .chart{width:100%;height:260px;}
+  .note{font-size:11.5px;color:var(--sub);background:#f8fafc;border-left:3px solid var(--accent);padding:9px 12px;border-radius:0 8px 8px 0;margin-top:10px;line-height:1.5;}
+  .note b{color:var(--ink);}
+  .kpi-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
+  .kpi{background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px 12px;}
+  .kpi .lbl{font-size:11px;color:var(--sub);line-height:1.3;}
+  .kpi .val{font-size:18px;font-weight:700;margin-top:3px;}
+  .kpi .chg{font-size:11.5px;margin-top:2px;}
+  footer{font-size:11px;color:var(--sub);text-align:center;padding:12px;}
+  .legend{font-size:11px;color:var(--sub);margin:-4px 0 8px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <span class="tag">Pre-market 盘前速览</span>
+      <span class="tag">2026-08-25 美股收盘</span>
+      <span class="tag">手机版</span>
+    </div>
+    <h1>美股 / 富时A50 / 美债 / 外汇 / 原油 / 金属 / 韩股</h1>
+    <p>上一交易日 2026-08-25（周二）美股收盘；亚太指数、恒指期货、汇市、贵金属为 2026-08-26 盘中/最新。数据来源：恒生聚源数据库。</p>
+  </header>
+
+  <section>
+    <h2><span class="bar"></span>一、盘前关键关注</h2>
+    <div class="kpi-row">
+      <div class="kpi"><div class="lbl">标普500（8/25）</div><div class="val">7,677.28</div><div class="chg up">▲ +0.32%</div></div>
+      <div class="kpi"><div class="lbl">10Y美债收益率</div><div class="val">4.64%</div><div class="chg down">▼ 回落至 4.7% 下方</div></div>
+      <div class="kpi"><div class="lbl">30Y美债收益率</div><div class="val">5.17%</div><div class="chg down">▼ 回落至 5.3% 下方</div></div>
+      <div class="kpi"><div class="lbl">美元指数 DXY</div><div class="val">98.91</div><div class="chg flat">▼ -0.08%</div></div>
+      <div class="kpi"><div class="lbl">离岸人民币 CNH</div><div class="val">6.7203</div><div class="chg flat">▼ -0.02%</div></div>
+      <div class="kpi"><div class="lbl">COMEX黄金</div><div class="val">4,694.50</div><div class="chg flat">▼ -0.07%</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="bar"></span>二、美股指数及期货</h2>
+    <div class="src">来源：聚源指数日行情（美联储/标普/纳斯达克/费城/恒生）；道指、纳指来自聚源宏观日线；A50/恒指/恒科为 8/26 最新盘中。SK海力士见第七项。</div>
+    <table>
+      <thead><tr><th>标的</th><th class="col-code">代码</th><th>收盘价</th><th>涨跌</th><th>涨跌幅</th></tr></thead>
+      <tbody>
+        <tr><td>道琼斯</td><td class="code col-code">us.DJI</td><td>53,577.40</td><td class="up">+160.24</td><td class="up">+0.30%</td></tr>
+        <tr><td>标普500</td><td class="code col-code">us.INX</td><td>7,677.28</td><td class="up">+24.42</td><td class="up">+0.32%</td></tr>
+        <tr><td>纳斯达克</td><td class="code col-code">us.IXIC</td><td>26,151.30</td><td class="up">+171.11</td><td class="up">+0.66%</td></tr>
+        <tr><td>费城半导体SOX</td><td class="code col-code">$SOX</td><td>11,588.04</td><td class="up">+164.87</td><td class="up">+1.44%</td></tr>
+        <tr><td>恒指期货</td><td class="code col-code">HSImain</td><td>25,653</td><td class="up">+141.87</td><td class="up">+0.56%</td></tr>
+        <tr><td>恒科期货</td><td class="code col-code">HTImain</td><td>4,626</td><td class="up">+37.61</td><td class="up">+0.82%</td></tr>
+        <tr><td>富时A50</td><td class="code col-code">CN</td><td>14,766.79</td><td class="up">+114.34</td><td class="up">+0.78%</td></tr>
+      </tbody>
+    </table>
+    <div id="chartEquity" class="chart"></div>
+    <div class="legend">▲ 红涨 / ▼ 绿跌（A股惯例）。美股为 8/25 收盘；恒指/恒科/A50 为 8/26 最新盘中。</div>
+  </section>
+
+  <section>
+    <h2><span class="bar"></span>三、美债收益率及预警</h2>
+    <div class="src">来源：聚源宏观（美联储 H.15），美债到期收益率日线；日变动单位 bp。</div>
+    <table>
+      <thead><tr><th>期限</th><th>收益率</th><th>日变动</th><th>预警线</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td>2年</td><td>4.17%</td><td class="down">-7.0bp</td><td>—</td><td><span class="pill ok">正常</span></td></tr>
+        <tr><td>10年</td><td>4.64%</td><td class="down">-6.0bp</td><td>4.7%</td><td><span class="pill ok">回落至线下</span></td></tr>
+        <tr><td>30年</td><td>5.17%</td><td class="down">-6.0bp</td><td>5.3%</td><td><span class="pill ok">回落至线下</span></td></tr>
+      </tbody>
+    </table>
+    <div id="chartYield" class="chart"></div>
+    <div class="note"><b>更新：</b>10Y 4.64% &lt; 4.7% 预警线、30Y 5.17% &lt; 5.3% 预警线，<b>双双回落至预警线下方</b>，风险压力较 8/21 明显缓解。盘中仍需关注 Jackson Hole（周五）鲍威尔/沃什讲话，若再发鹰派表态，长端可能反弹重回 4.7%/5.3% 区间。</div>
+  </section>
+
+  <section>
+    <h2><span class="bar"></span>四、美元指数与人民币</h2>
+    <div class="src">来源：聚源宏观（DXY 500176926；USD/CNH 500154803；USD/JPY 500154787）。DXY/USD/JPY 截至 8/25，USD/CNH 截至 8/26 13:30。</div>
+    <table>
+      <thead><tr><th>标的</th><th>最新价</th><th>涨跌</th><th>涨跌幅</th><th>预警线</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td>美元指数 DXY</td><td>98.91</td><td class="down">-0.08</td><td class="down">-0.08%</td><td>100</td><td><span class="pill ok">未触发</span></td></tr>
+        <tr><td>离岸人民币 CNH</td><td>6.7203</td><td class="down">-0.0015</td><td class="down">-0.02%</td><td>6.73</td><td><span class="pill ok">未触发</span></td></tr>
+        <tr><td>美元兑日元</td><td>159.05</td><td class="down">-0.16</td><td class="down">-0.10%</td><td>—</td><td><span class="pill ok">正常</span></td></tr>
+      </tbody>
+    </table>
+    <div id="chartFxDxy" class="chart"></div>
+    <div id="chartFxCnh" class="chart"></div>
+    <div class="note">美元 DXY 报 98.91，<b>仍低于 100 预警</b>（站上 100 = 美元转强/全球流动性收紧）；人民币 CNH 报 6.7203，<b>低于 6.73 预警</b>，本周在 6.71-6.73 窄幅震荡；USD/JPY 在 159 附近，央行干预阈值上沿。</div>
+  </section>
+
+  <section>
+    <h2><span class="bar"></span>五、原油价格</h2>
+    <div class="src">来源：聚源宏观期货日线（NYMEX WTI 1380053603；ICE Brent 1080010002）。均为下一交易月合约结算价。</div>
+    <table>
+      <thead><tr><th>标的</th><th>美元/桶</th><th>涨跌幅</th><th>合约</th></tr></thead>
+      <tbody>
+        <tr><td>WTI</td><td>82.36</td><td class="down">-3.12%</td><td>10月</td></tr>
+        <tr><td>布伦特</td><td>88.58</td><td class="down">-3.89%</td><td>10月</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><b>大跌：</b>WTI 一周内从 87 跌至 82（-5%），Brent 从 94 跌至 88（-6%），主因英伟达财报前芯片股回吐 + 美对伊新一轮制裁预期 + 美元小幅走强。市场在英伟达周三盘后业绩前降仓，摩根士丹利此前 100 美元目标价面临下修风险。</div>
+  </section>
+
+  <section>
+    <h2><span class="bar"></span>六、COMEX 黄金与铜</h2>
+    <div class="src">来源：聚源宏观期货日线（COMEX Gold 1330021171 活跃合约结算价；Copper 1330021170）。</div>
+    <table>
+      <thead><tr><th>标的</th><th>收盘价</th><th>涨跌</th><th>涨跌幅</th></tr></thead>
+      <tbody>
+        <tr><td>COMEX黄金</td><td>4,694.50/oz</td><td class="down">-3.30</td><td class="down">-0.07%</td></tr>
+        <tr><td>COMEX铜</td><td>6.714/lb</td><td class="up">+0.109</td><td class="up">+1.65%</td></tr>
+      </tbody>
+    </table>
+    <div class="note">黄金窄幅震荡于 4,690 一线，长端利率回落对其支撑减弱但美元走弱提供缓冲；铜在风险偏好回暖带动下走高 1.65%，周内累计涨约 4%，主因全球库存偏低 + 中国基建需求预期。</div>
+  </section>
+
+  <section>
+    <h2><span class="bar"></span>七、韩国市场</h2>
+    <div class="src">来源：聚源宏观（KOSPI 1152550021）；三星电子（005930.KS）、SK海力士（000660.KS）报价来自 Reuters/韩联社/Wind 8/25 收盘。</div>
+    <table>
+      <thead><tr><th>标的</th><th class="col-code">代码</th><th>收盘价</th><th>涨跌</th><th>涨跌幅</th></tr></thead>
+      <tbody>
+        <tr><td>KOSPI</td><td class="code col-code">KS11</td><td>6,742.74</td><td class="up">+45.78</td><td class="up">+0.68%</td></tr>
+        <tr><td>三星电子</td><td class="code col-code">005930.KS</td><td>257,000</td><td class="flat">0</td><td class="flat">0.00%</td></tr>
+        <tr><td>SK海力士</td><td class="code col-code">000660.KS</td><td>1,678,000</td><td class="up">+7,000</td><td class="up">+0.42%</td></tr>
+      </tbody>
+    </table>
+    <div id="chartKorea" class="chart"></div>
+    <div class="note"><b>V 型反转：</b>8/25 KOSPI 早盘一度跌 4%（外资净卖 3.82 万亿韩元），午后个人/机构资金合计 2.2 万亿韩元承接，指数收涨 0.68% 报 6,742.74。KOSDAQ 同步走强 +1.7%。三星电子自 8/22 公告 110 万亿韩元股东回报方案后，股价已自高位回吐约 8.7%，市场进入"预期兑现"阶段；SK海力士在 HBM4 利好支撑下反弹 0.42%。本周关键变量：英伟达周三盘后业绩。</div>
+  </section>
+
+  <footer>
+    本页为 Pre-market 盘前速览（手机版），数据来源：恒生聚源数据库 + Reuters/韩联社。数据标注来源与时点，最终以交易所官方数据为准，不构成投资建议。
+  </footer>
+
+</div>
+
+<script>
+  var w = (window.innerWidth>480?480:window.innerWidth);
+  echarts.init(document.getElementById('chartEquity')).setOption({
+    tooltip:{trigger:'axis', axisPointer:{type:'shadow'}, formatter:'{b}: {c}%'},
+    grid:{left:84, right:24, top:14, bottom:20},
+    xAxis:{type:'value', axisLabel:{formatter:'{value}%'}},
+    yAxis:{type:'category', data:['道琼斯','标普500','纳斯达克','费城半导体','恒指期货','恒科期货','富时A50']},
+    series:[{type:'bar', data:[
+      {value:0.30, itemStyle:{color:'#e23c3c'}},
+      {value:0.32, itemStyle:{color:'#e23c3c'}},
+      {value:0.66, itemStyle:{color:'#e23c3c'}},
+      {value:1.44, itemStyle:{color:'#e23c3c'}},
+      {value:0.56, itemStyle:{color:'#e23c3c'}},
+      {value:0.82, itemStyle:{color:'#e23c3c'}},
+      {value:0.78, itemStyle:{color:'#e23c3c'}}
+    ]}]
+  });
+
+  echarts.init(document.getElementById('chartYield')).setOption({
+    tooltip:{trigger:'axis', axisPointer:{type:'shadow'}, formatter:'{b}: {c}%'},
+    grid:{left:48, right:24, top:40, bottom:22},
+    xAxis:{type:'category', data:['2年','10年','30年']},
+    yAxis:{type:'value', axisLabel:{formatter:'{value}%'}, max:6},
+    series:[{type:'bar', barWidth:'46%', data:[
+      {value:4.17, itemStyle:{color:'#5b8def'}},
+      {value:4.64, itemStyle:{color:'#1a9e57'}},
+      {value:5.17, itemStyle:{color:'#1a9e57'}}
+    ], markLine:{
+      silent:true, symbol:'none', lineStyle:{type:'dashed'},
+      data:[
+        {yAxis:4.7, lineStyle:{color:'#e23c3c'}, label:{formatter:'10Y 4.7%', color:'#e23c3c', position:'insideEndTop', fontSize:10}},
+        {yAxis:5.3, lineStyle:{color:'#e8973c'}, label:{formatter:'30Y 5.3%', color:'#e8973c', position:'insideEndTop', fontSize:10}}
+      ]
+    }}]
+  });
+
+  echarts.init(document.getElementById('chartKorea')).setOption({
+    tooltip:{trigger:'axis', axisPointer:{type:'shadow'}, formatter:'{b}: {c}%'},
+    grid:{left:78, right:24, top:14, bottom:20},
+    xAxis:{type:'value', axisLabel:{formatter:'{value}%'}},
+    yAxis:{type:'category', data:['KOSPI','三星电子','SK海力士']},
+    series:[{type:'bar', data:[
+      {value:0.68, itemStyle:{color:'#e23c3c'}},
+      {value:0.00, itemStyle:{color:'#9ca3af'}},
+      {value:0.42, itemStyle:{color:'#e23c3c'}}
+    ]}]
+  });
+
+  echarts.init(document.getElementById('chartFxDxy')).setOption({
+    title:{text:'美元指数 DXY（预警 100）', left:'center', textStyle:{fontSize:12, color:'#1f2937'}},
+    tooltip:{trigger:'axis', formatter:'{b}: {c}'},
+    grid:{left:40, right:16, top:38, bottom:20},
+    xAxis:{type:'category', data:['DXY']},
+    yAxis:{type:'value', min:96, max:102, axisLabel:{formatter:'{value}'}},
+    series:[{type:'bar', barWidth:'40%', data:[
+      {value:98.91, itemStyle:{color:'#1a9e57'}}
+    ], markLine:{
+      silent:true, symbol:'none', lineStyle:{type:'dashed', color:'#e23c3c'},
+      data:[{yAxis:100, label:{formatter:'预警 100', color:'#e23c3c', position:'end', fontSize:10}}]
+    }}]
+  });
+
+  echarts.init(document.getElementById('chartFxCnh')).setOption({
+    title:{text:'离岸人民币 CNH（预警 6.73）', left:'center', textStyle:{fontSize:12, color:'#1f2937'}},
+    tooltip:{trigger:'axis', formatter:'{b}: {c}'},
+    grid:{left:44, right:16, top:38, bottom:20},
+    xAxis:{type:'category', data:['CNH']},
+    yAxis:{type:'value', min:6.60, max:6.80, axisLabel:{formatter:'{value}'}},
+    series:[{type:'bar', barWidth:'40%', data:[
+      {value:6.7203, itemStyle:{color:'#1a9e57'}}
+    ], markLine:{
+      silent:true, symbol:'none', lineStyle:{type:'dashed', color:'#e23c3c'},
+      data:[{yAxis:6.73, label:{formatter:'预警 6.73', color:'#e23c3c', position:'end', fontSize:10}}]
+    }}]
+  });
+</script>
+</body>
+</html>
