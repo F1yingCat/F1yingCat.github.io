@@ -1,9 +1,14 @@
 name: Sync MarketViewer to docs
 
 on:
-  # 1. 任何 push 触发（涵盖 Mavis 每天推数据）
+  # 1. 当 static/ 下文件变化时触发（涵盖 Mavis 每天推数据）
+  #    不要监听 docs/，否则 sync 自己 push 会自循环
   push:
     branches: [main]
+    paths:
+      - 'static/MarketViewer.html'
+      - 'static/assets/**'
+      - 'static/data/**'
 
   # 2. Gmeek 跑完后触发（防止被它清空）
   workflow_run:
@@ -51,6 +56,8 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "sync: market-viewer from static [skip ci]"
+            # 不要 [skip ci]！否则 Deploy Pages 也不会跑 → 用户访问看到旧版
+            # 这里 sync push 不会自循环：sync 的 trigger paths 是 static/，而 sync 改的是 docs/
+            git commit -m "sync: market-viewer from static"
             git push
           fi
