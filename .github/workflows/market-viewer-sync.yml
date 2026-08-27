@@ -4,10 +4,6 @@ on:
   # 1. 任何 push 触发（涵盖 Mavis 每天推数据）
   push:
     branches: [main]
-    paths:
-      - 'static/MarketViewer.html'
-      - 'static/assets/**'
-      - 'static/data/**'
 
   # 2. Gmeek 跑完后触发（防止被它清空）
   workflow_run:
