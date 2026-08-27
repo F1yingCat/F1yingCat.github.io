@@ -248,17 +248,14 @@
           yAxis: hasDualY ? [
             {
               type: 'value',
-              name: series[0]?.name || '',
+              // 删掉 name 和 nameTextStyle：双 Y 轴的 name 标签会跟顶部 legend 按钮视觉撞车
               position: 'left',
-              axisLabel: { fontSize: 10 },
-              nameTextStyle: { fontSize: 10, align: 'left' }
+              axisLabel: { fontSize: 10 }
             },
             {
               type: 'value',
-              name: series[1]?.name || '',
               position: 'right',
               axisLabel: { fontSize: 10 },
-              nameTextStyle: { fontSize: 10, align: 'right' },
               splitLine: { show: false }
             }
           ] : {
