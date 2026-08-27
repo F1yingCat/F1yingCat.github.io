@@ -36,8 +36,13 @@
     if (typeof c === 'string') return `<td>${esc(c)}</td>`;
     if (typeof c !== 'object') return `<td>${esc(c)}</td>`;
 
+    // 收集额外的 class（如 col-code 隐藏列、自定义 className）
+    const extraCls = c.className ? ' ' + esc(c.className) : '';
+
     if (c.type === 'code') {
-      return `<td class="code">${esc(c.text)}</td>`;
+      // code 类型默认加 col-code（隐藏列），除非显式覆盖
+      const codeCls = c.className || 'col-code';
+      return `<td class="code ${esc(codeCls)}">${esc(c.text)}</td>`;
     }
     if (c.type === 'pill') {
       return `<td><span class="pill ${esc(c.level || 'near')}">${esc(c.text)}</span></td>`;
@@ -52,8 +57,9 @@
       return `<td>${c.html || ''}</td>`;
     }
     // 默认：带方向的文本
-    const dir = c.dir ? ` class="${esc(c.dir)}"` : '';
-    return `<td${dir}>${esc(c.text || '')}</td>`;
+    const dir = c.dir ? esc(c.dir) : '';
+    const classes = [dir, (c.className || '').trim()].filter(Boolean).join(' ');
+    return classes ? `<td class="${classes}">${esc(c.text || '')}</td>` : `<td>${esc(c.text || '')}</td>`;
   }
 
   function renderRow(row) {
@@ -139,11 +145,12 @@
   /* ========== ECharts 渲染 ==========
    * chart: {
    *   id: "us_equity",
-   *   type: "bar-h" | "bar" | "bar-single",
+   *   type: "bar-h" | "bar" | "bar-single" | "line",
    *   xLabel / yLabel:  轴标签（可选）
    *   categories: ["..."],
-   *   data: [{"value":0.21, "color":"#e23c3c"}, ...],
-   *   title: "DXY (预警 100)",      // 仅 bar-single 使用
+   *   data: [{"value":0.21, "color":"#e23c3c"}, ...],   // bar 系列
+   *   series: [{name, data, color, yAxisIndex}, ...],    // line 系列
+   *   title: "DXY (预警 100)",      // bar-single
    *   yMin / yMax,                  // 可选
    *   markLine: [                   // 可选
    *     {yAxis:100, color:"#e23c3c", label:"预警 100", position:"end|insideEndTop"}
@@ -219,6 +226,56 @@
             markLine: markLineData.length ? { silent: true, symbol: 'none', data: markLineData } : undefined
           }]
         };
+      } else if (chart.type === 'line') {
+        // 折线图（支持多 series、双 Y 轴）
+        const series = chart.series || [];
+        const hasDualY = series.length > 1 && series.some(s => s.yAxisIndex === 1);
+        option = {
+          tooltip: { trigger: 'axis' },
+          legend: {
+            top: 0,
+            textStyle: { fontSize: 11 },
+            data: series.map(s => s.name)
+          },
+          grid: { left: 50, right: hasDualY ? 60 : 24, top: 32, bottom: 24 },
+          xAxis: {
+            type: 'category',
+            data: chart.categories || [],
+            boundaryGap: false,
+            axisLabel: { fontSize: 10 }
+          },
+          yAxis: hasDualY ? [
+            {
+              type: 'value',
+              name: series[0]?.name || '',
+              position: 'left',
+              axisLabel: { fontSize: 10 },
+              nameTextStyle: { fontSize: 10, align: 'left' }
+            },
+            {
+              type: 'value',
+              name: series[1]?.name || '',
+              position: 'right',
+              axisLabel: { fontSize: 10 },
+              nameTextStyle: { fontSize: 10, align: 'right' },
+              splitLine: { show: false }
+            }
+          ] : {
+            type: 'value',
+            axisLabel: { fontSize: 10 }
+          },
+          series: series.map(s => ({
+            name: s.name,
+            type: 'line',
+            data: s.data,
+            smooth: true,
+            yAxisIndex: s.yAxisIndex || 0,
+            lineStyle: { color: s.color, width: 2 },
+            itemStyle: { color: s.color },
+            symbol: 'circle',
+            symbolSize: 6
+          }))
+        };
       } else {
         option = {};
       }
@@ -231,13 +288,18 @@
   function renderSection(s) {
     if (!s) return '';
     const isKpi = s.type === 'kpi';
-    const body = isKpi
-      ? renderKpis(s.kpis)
-      : (s.source ? renderSource(s.source) : '') +
+    let body;
+    if (isKpi) {
+      body = renderKpis(s.kpis);
+    } else {
+      // 普通 section：如果有 kpis 字段，先渲染 KPI 卡片
+      body = s.kpis ? renderKpis(s.kpis) : '';
+      body += (s.source ? renderSource(s.source) : '') +
         renderTable(s.columns, s.rows) +
         (s.charts ? s.charts.map(renderChart).join('') : '') +
         (s.legend ? `<div class="legend">${esc(s.legend)}</div>` : '') +
         (s.note ? renderNote(s.note) : '');
+    }
 
     return `<section>
       <h2><span class="bar"></span>${esc(s.title || '')}</h2>
