@@ -47,7 +47,8 @@
     if (c.type === 'pill') {
       return `<td><span class="pill ${esc(c.level || 'near')}">${esc(c.text)}</span></td>`;
     }
-    if (c.type === 'source') {
+    if (c.type === 'source' || (c.fallback !== undefined && c.text === undefined)) {
+      // 简写：{ "fallback": true } 或 { "fallback": true, "text": "📡" } 或 { "text": "聚源" }
       if (c.fallback) {
         return `<td><span class="srcfallback">${esc(c.text || '📡')}</span></td>`;
       }
@@ -295,7 +296,7 @@
       // 普通 section：如果有 kpis 字段，先渲染 KPI 卡片
       body = s.kpis ? renderKpis(s.kpis) : '';
       body += (s.source ? renderSource(s.source) : '') +
-        renderTable(s.columns, s.rows) +
+        (s.columns && s.rows ? renderTable(s.columns, s.rows) : '') +
         (s.charts ? s.charts.map(renderChart).join('') : '') +
         (s.legend ? `<div class="legend">${esc(s.legend)}</div>` : '') +
         (s.note ? renderNote(s.note) : '');
