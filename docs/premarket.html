@@ -36,6 +36,7 @@
   .pill.breach{background:#fde8e8;color:var(--danger);}
   .pill.near{background:#fef3e2;color:var(--warn);}
   .pill.ok{background:#e8f6ee;color:var(--down);}
+  .srcfallback{color:var(--warn);font-weight:600;}
   .chart{width:100%;height:260px;}
   .note{font-size:11.5px;color:var(--sub);background:#f8fafc;border-left:3px solid var(--accent);padding:9px 12px;border-radius:0 8px 8px 0;margin-top:10px;line-height:1.5;}
   .note b{color:var(--ink);}
@@ -59,7 +60,7 @@
       <span class="tag">聚源数据库</span>
     </div>
     <h1>美股 / 富时A50 / 美债 / 外汇 / 原油 / 金属 / 韩股</h1>
-    <p>美股/美债/外汇/商品聚源最新可得数据（美股 8/26 收盘，美债/黄金/DXY 8/26；外汇 CNH/JPY 8/27 最新）；亚太/韩股 8/26 收盘。数据源：恒生聚源数据库 + Reuters/中新经纬。盘前请以最新报价为准。</p>
+    <p>美股 8/26 集体收跌（PCE 通胀高于预期），10Y 4.66% 维持高位；DXY 99.14 临近 100 预警；WTI 82.23 续跌，金银同步回落。亚太整体反弹，恒指/恒科/A50/KOSPI 全线收红。数据源：恒生聚源数据库 + Reuters/路透/中新经纬/北京日报（兜底项已标 📡）。盘前请以最新报价为准。</p>
   </header>
 
   <section>
@@ -70,27 +71,27 @@
       <div class="kpi"><div class="lbl">30Y美债收益率 (8/26)</div><div class="val">5.18%</div><div class="chg up">▲ 自 5.17% 上行 1bp</div></div>
       <div class="kpi"><div class="lbl">美元指数 DXY (8/26)</div><div class="val">99.14</div><div class="chg up">▲ +0.23%</div></div>
       <div class="kpi"><div class="lbl">离岸人民币 CNH (8/27 最新)</div><div class="val">6.7210</div><div class="chg down">▼ 较 8/26 升 0.02%</div></div>
-      <div class="kpi"><div class="lbl">COMEX黄金 (8/26)</div><div class="val">4,653.30</div><div class="chg down">▼ 自 4,694.50 回吐 41.20</div></div>
+      <div class="kpi"><div class="lbl">WTI原油 (8/26)</div><div class="val">82.23</div><div class="chg down">▼ -0.13 (-0.16%)</div></div>
     </div>
   </section>
 
   <section>
     <h2><span class="bar"></span>二、美股指数及亚太收盘</h2>
-    <div class="src">来源：恒生聚源数据库 · 美股上一交易日收盘 (8/26) · 恒指/恒科/A50 为 8/26 收盘</div>
+    <div class="src">来源：恒生聚源数据库 · 美股上一交易日收盘 (8/26) · 恒指/恒科/A50 为 8/26 收盘。来源列：聚源 ✅ / <span class="srcfallback">📡 web_search 兜底</span></div>
     <table>
-      <thead><tr><th>标的</th><th class="col-code">代码</th><th>收盘价</th><th>涨跌</th><th>涨跌幅</th></tr></thead>
+      <thead><tr><th>标的</th><th class="col-code">代码</th><th>收盘价</th><th>涨跌</th><th>涨跌幅</th><th>来源</th></tr></thead>
       <tbody>
-        <tr><td>道琼斯</td><td class="code col-code">us.DJI</td><td>53,463.88</td><td class="down">-113.52</td><td class="down">-0.21%</td></tr>
-        <tr><td>标普500</td><td class="code col-code">us.INX</td><td>7,675.70</td><td class="down">-1.58</td><td class="down">-0.02%</td></tr>
-        <tr><td>纳斯达克</td><td class="code col-code">us.IXIC</td><td>26,130.20</td><td class="down">-21.10</td><td class="down">-0.08%</td></tr>
-        <tr><td>费城半导体SOX</td><td class="code col-code">$SOX</td><td>11,611.24</td><td class="up">+23.20</td><td class="up">+0.20%</td></tr>
-        <tr><td>恒指</td><td class="code col-code">HSI.HK</td><td>25,652.97</td><td class="up">+141.87</td><td class="up">+0.56%</td></tr>
-        <tr><td>恒科</td><td class="code col-code">HSTECH.HK</td><td>4,626.15</td><td class="up">+37.61</td><td class="up">+0.82%</td></tr>
-        <tr><td>富时A50</td><td class="code col-code">XIN9.GI</td><td>14,766.79</td><td class="up">+114.34</td><td class="up">+0.78%</td></tr>
+        <tr><td>道琼斯</td><td class="code col-code">us.DJI</td><td>53,463.88</td><td class="down">-113.52</td><td class="down">-0.21%</td><td><span class="srcfallback">📡</span></td></tr>
+        <tr><td>标普500</td><td class="code col-code">us.INX</td><td>7,675.70</td><td class="down">-1.58</td><td class="down">-0.02%</td><td>聚源</td></tr>
+        <tr><td>纳斯达克</td><td class="code col-code">us.IXIC</td><td>26,130.20</td><td class="down">-21.10</td><td class="down">-0.08%</td><td>聚源</td></tr>
+        <tr><td>费城半导体SOX</td><td class="code col-code">$SOX</td><td>11,611.24</td><td class="up">+23.20</td><td class="up">+0.20%</td><td>聚源</td></tr>
+        <tr><td>恒指</td><td class="code col-code">HSI.HK</td><td>25,652.97</td><td class="up">+141.87</td><td class="up">+0.56%</td><td>聚源</td></tr>
+        <tr><td>恒科</td><td class="code col-code">HSTECH.HK</td><td>4,626.15</td><td class="up">+37.61</td><td class="up">+0.82%</td><td>聚源</td></tr>
+        <tr><td>富时A50</td><td class="code col-code">XIN9.GI</td><td>14,766.79</td><td class="up">+114.34</td><td class="up">+0.78%</td><td>聚源</td></tr>
       </tbody>
     </table>
     <div id="chartEquity" class="chart"></div>
-    <div class="legend">▲ 红涨 / ▼ 绿跌（A股惯例）· 美股/亚太均为 8/26 收盘</div>
+    <div class="legend">▲ 红涨 / ▼ 绿跌（A股惯例）· 美股为 8/26 收盘；恒指/恒科/A50 为 8/26 收盘</div>
   </section>
 
   <section>
@@ -105,68 +106,68 @@
       </tbody>
     </table>
     <div id="chartYield" class="chart"></div>
-    <div class="note"><b>关注升级：</b>10Y 4.66% 较 8/25 上行 2bp，重新逼近 4.7% 预警线；30Y 5.18% 仍在 5.3% 下方但小幅抬升。今晚英伟达盘后业绩 + Jackson Hole 央行年会周五开幕是主要变量。</div>
+    <div class="note"><b>关注升级：</b>10Y 维持 4.66%，连续两日上行 2bp，距离 4.7% 预警仅 4bp；30Y 5.18% 在 5.3% 下方徘徊。7 月 PCE 同比 3.7% / 核心 PCE 3.3% 略超预期，市场对 9 月美联储加息 25bp 概率从 36% 升至 40%，今晚英伟达盘后业绩 + Jackson Hole 周五开幕是主要变量。</div>
   </section>
 
   <section>
     <h2><span class="bar"></span>四、美元指数与人民币</h2>
-    <div class="src">来源：聚源宏观（DXY 500176926；USD/CNH 500154803；USD/JPY 500154787）。DXY 为 8/26 收盘；CNH/JPY 为 8/27 当日最新。</div>
+    <div class="src">来源：聚源宏观（DXY 500176926；USD/CNH 500154803；USD/JPY 500154787）。DXY/CNH/JPY 均为最新可得交易日收盘。</div>
     <table>
       <thead><tr><th>标的</th><th>最新价</th><th>涨跌</th><th>涨跌幅</th><th>预警线</th><th>状态</th></tr></thead>
       <tbody>
-        <tr><td>美元指数 DXY</td><td>99.143</td><td class="up">+0.229</td><td class="up">+0.23%</td><td>100</td><td><span class="pill near">临近预警</span></td></tr>
-        <tr><td>离岸人民币 CNH</td><td>6.7210</td><td class="down">-0.0016</td><td class="down">-0.02%</td><td>6.73</td><td><span class="pill ok">未触发</span></td></tr>
-        <tr><td>美元兑日元</td><td>159.19</td><td class="down">-0.12</td><td class="down">-0.08%</td><td>—</td><td class="flat">正常</td></tr>
+        <tr><td>美元指数 DXY (8/26)</td><td>99.143</td><td class="up">+0.229</td><td class="up">+0.23%</td><td>100</td><td><span class="pill near">临近预警</span></td></tr>
+        <tr><td>离岸人民币 CNH (8/27)</td><td>6.7210</td><td class="down">-0.0016</td><td class="down">-0.02%</td><td>6.73</td><td><span class="pill ok">未触发</span></td></tr>
+        <tr><td>美元兑日元 (8/27)</td><td>159.188</td><td class="down">-0.124</td><td class="down">-0.08%</td><td>—</td><td class="flat">正常</td></tr>
       </tbody>
     </table>
     <div id="chartFxDxy" class="chart"></div>
     <div id="chartFxCnh" class="chart"></div>
-    <div class="note">美元 DXY 报 99.14（8/26 收盘），<b>进一步逼近 100 预警</b>，需关注 Jackson Hole 信号；人民币 CNH 报 6.7210（8/27 当日最新），<b>低于 6.73 预警</b>，窄幅震荡；USD/JPY 在 159.19 附近，日本央行干预阈值上沿。</div>
+    <div class="note">美元 DXY 报 99.14（8/26 收盘），<b>进一步逼近 100 预警</b>，今日上涨 0.23%，创 8/6 以来最大单日涨幅；人民币 CNH 报 6.7210（8/27 当日最新），<b>低于 6.73 预警</b>，窄幅震荡；USD/JPY 在 159.19 附近，日本央行干预阈值上沿。</div>
   </section>
 
   <section>
     <h2><span class="bar"></span>五、原油价格</h2>
-    <div class="src">来源：聚源宏观期货日线（NYMEX WTI 1380053603；ICE Brent 1080010002）。均为下一交易月合约结算价 (8/26)。</div>
+    <div class="src"><span class="srcfallback">WTI 聚源 1380053603 仅至 8/25 收盘 (82.36)，8/26 结算价采 📡 web_search 兜底（中新经纬/澎湃/北京日报一致）</span>；ICE 布伦特 1080010002 聚源 8/26 连续合约 ✅。</div>
     <table>
-      <thead><tr><th>标的</th><th>美元/桶</th><th>涨跌</th><th>涨跌幅</th><th>合约</th></tr></thead>
+      <thead><tr><th>标的</th><th>美元/桶</th><th>涨跌</th><th>涨跌幅</th><th>合约</th><th>来源</th></tr></thead>
       <tbody>
-        <tr><td>WTI</td><td>82.23</td><td class="down">-0.13</td><td class="down">-0.16%</td><td>10月</td></tr>
-        <tr><td>布伦特</td><td>87.84</td><td class="down">-0.74</td><td class="down">-0.84%</td><td>10月</td></tr>
+        <tr><td>WTI</td><td>82.23</td><td class="down">-0.13</td><td class="down">-0.16%</td><td>10月</td><td><span class="srcfallback">📡</span></td></tr>
+        <tr><td>布伦特</td><td>87.84</td><td class="down">-0.74</td><td class="down">-0.84%</td><td>10月</td><td>聚源</td></tr>
       </tbody>
     </table>
-    <div class="note"><b>延续弱势：</b>WTI/Brent 连续四日下跌，WTI 从 87.83 跌至 82.23（-6.4%），Brent 从 94.39 跌至 87.84（-7.0%）。主因地缘溢价回吐 + 7月美国核心 PCE 同比 3.3% 略超预期，市场重新押注美联储 9 月加息预期升温压制油价。大摩此前 100 美元目标价面临下修风险。</div>
+    <div class="note"><b>续跌四日：</b>WTI 8/26 收 82.23 美元/桶（10月合约），日内一度跌至 79.79 后反弹；布伦特 87.84 跌 0.84%。主因：①霍尔木兹海峡通航预期改善，伊朗-阿曼达成水域占比协议；② 7 月 PCE 高于预期，市场对美联储加息预期升温施压油价；③ 美元走强。大摩 100 美元目标价面临持续下修风险。</div>
   </section>
 
   <section>
     <h2><span class="bar"></span>六、COMEX 黄金与铜</h2>
-    <div class="src">来源：聚源宏观期货日线（COMEX Gold 1330021171 活跃合约结算价 (8/26)；Copper 1330021170 (8/25)）。</div>
+    <div class="src">聚源 COMEX Gold 1330021171 8/26 活跃合约结算价 ✅；<span class="srcfallback">COMEX Copper 1330021170 聚源仅至 8/25 (6.714)，8/26 结算价采 📡 web_search 兜底（生意社/Morningstar 8月合约 6.5945）</span></div>
     <table>
-      <thead><tr><th>标的</th><th>收盘价</th><th>涨跌</th><th>涨跌幅</th></tr></thead>
+      <thead><tr><th>标的</th><th>收盘价</th><th>涨跌</th><th>涨跌幅</th><th>来源</th></tr></thead>
       <tbody>
-        <tr><td>COMEX黄金</td><td>4,653.30/oz</td><td class="down">-41.20</td><td class="down">-0.88%</td></tr>
-        <tr><td>COMEX铜</td><td>6.714/lb</td><td class="up">+0.109</td><td class="up">+1.65%</td></tr>
+        <tr><td>COMEX黄金 (12月)</td><td>4,653.30/oz</td><td class="down">-41.20</td><td class="down">-0.88%</td><td>聚源</td></tr>
+        <tr><td>COMEX铜 (近月)</td><td>6.5945/lb</td><td class="down">-0.1145</td><td class="down">-1.71%</td><td><span class="srcfallback">📡</span></td></tr>
       </tbody>
     </table>
-    <div class="note">黄金自 4,694.50 回吐至 4,653.30（-0.88%），在历史高位附近高位震荡；铜价周内累涨 3.8%，与全球制造业 PMI 同步性较高，关注今晚美 PCE 数据与英伟达盘后业绩。</div>
+    <div class="note">黄金自 4,694.50 回吐至 4,653.30（-0.88%），在历史高位附近震荡；今日白银同步走弱（-0.87% 报 68.09）。铜价 8/26 自历史新高回吐，主因美元走强 + 美联储加息预期回升 + 获利了结；盘中 12 月合约创历史高 6.8795 后收报 6.7015。LME 库存仍处低位 + AI/电气化需求支撑中期走势。</div>
   </section>
 
   <section>
     <h2><span class="bar"></span>七、韩国市场</h2>
-    <div class="src">来源：聚源宏观 KOSPI 1152550021；三星电子（005930.KS）、SK海力士（000660.KS）报价来自 Reuters/Investing.com 8/26 收盘。</div>
+    <div class="src">聚源宏观 KOSPI 1152550021；<span class="srcfallback">三星电子（005930.KS）、SK海力士（000660.KS）报价采 📡 web_search 兜底（MarketWatch/Investing.com 8/26 收盘）</span></div>
     <table>
-      <thead><tr><th>标的</th><th class="col-code">代码</th><th>收盘价</th><th>涨跌</th><th>涨跌幅</th></tr></thead>
+      <thead><tr><th>标的</th><th class="col-code">代码</th><th>收盘价</th><th>涨跌</th><th>涨跌幅</th><th>来源</th></tr></thead>
       <tbody>
-        <tr><td>KOSPI</td><td class="code col-code">KS11</td><td>6,808.21</td><td class="up">+65.47</td><td class="up">+0.97%</td></tr>
-        <tr><td>三星电子</td><td class="code col-code">005930.KS</td><td>261,500</td><td class="up">+4,500</td><td class="up">+1.75%</td></tr>
-        <tr><td>SK海力士</td><td class="code col-code">000660.KS</td><td>1,688,000</td><td class="up">+10,000</td><td class="up">+0.60%</td></tr>
+        <tr><td>KOSPI</td><td class="code col-code">KS11</td><td>6,808.21</td><td class="up">+65.47</td><td class="up">+0.97%</td><td>聚源</td></tr>
+        <tr><td>三星电子</td><td class="code col-code">005930.KS</td><td>261,500</td><td class="up">+4,500</td><td class="up">+1.75%</td><td><span class="srcfallback">📡</span></td></tr>
+        <tr><td>SK海力士</td><td class="code col-code">000660.KS</td><td>1,688,000</td><td class="up">+10,000</td><td class="up">+0.60%</td><td><span class="srcfallback">📡</span></td></tr>
       </tbody>
     </table>
     <div id="chartKorea" class="chart"></div>
-    <div class="note"><b>连涨两日：</b>8/26 KOSPI 收涨 0.97% 报 6,808.21，连续第二日反弹，重夺 6,800 点。三星电子 +1.75% 收报 261,500 KRW、SK 海力士 +0.60% 收报 1,688,000 KRW，主因存储巨头持续股票回购（三星本周开始回购 + SK 海力士 65 万股回购计划进行中）。机构净买入 7,604 亿韩元抵消个人 2.24 万亿净卖压。今晚英伟达业绩是本周最大变量。</div>
+    <div class="note"><b>连涨两日：</b>8/26 KOSPI 收涨 0.97% 报 6,808.21，连续第二日反弹，重夺 6,800 点。三星电子 +1.75% 收报 261,500 KRW、SK 海力士 +0.60% 收报 1,688,000 KRW，主因存储巨头持续股票回购（三星本周开始回购 + SK 海力士 65 万股回购计划进行中）。日韩股今日同步反弹，主因美债收益率回落 + 科技股回暖。今晚英伟达业绩是本周最大变量（盘后已超预期：Q2 营收 962 亿美元，同比 +106%，下季指引 1080 亿）。</div>
   </section>
 
   <footer>
-    本页由 Mavis 通过恒生聚源数据库生成 · 最后更新: 2026-08-27 09:20 北京时间 · 不构成投资建议
+    本页由 Mavis 通过恒生聚源数据库生成 · 最后更新: 2026-08-27 09:17 北京时间 · 不构成投资建议
   </footer>
 
 </div>
