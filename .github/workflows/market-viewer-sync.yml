@@ -1,0 +1,57 @@
+name: Sync MarketViewer to docs
+
+on:
+  # 1. 任何 push 触发（涵盖 Mavis 每天推数据）
+  push:
+    branches: [main]
+    paths:
+      - 'static/MarketViewer.html'
+      - 'static/assets/**'
+      - 'static/data/**'
+  
+  # 2. Gmeek 跑完后触发（防止被它清空）
+  workflow_run:
+    workflows: ["Gmeek"]
+    types: [completed]
+
+# 防止和 Gmeek 互相等待死锁
+concurrency:
+  group: sync-market-viewer
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    # Gmeek 失败时也同步（万一 Gmeek 跑挂了我们也保持 MarketViewer 最新）
+    if: ${{ github.event_name == 'push' || github.event.workflow_run.conclusion != 'failure' }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Sync static → docs
+        run: |
+          set -e
+          mkdir -p docs
+          # 只同步 MarketViewer 相关文件，不影响 Gmeek 生成的文件
+          [ -f static/MarketViewer.html ] && cp static/MarketViewer.html docs/MarketViewer.html
+          [ -d static/assets ] && cp -r static/assets/. docs/assets/
+          [ -d static/data ] && cp -r static/data/. docs/data/
+          echo "=== docs/MarketViewer.html ===" && ls -la docs/MarketViewer.html
+          echo "=== docs/assets/ ===" && ls docs/assets/
+          echo "=== docs/data/ ===" && ls docs/data/
+      
+      - name: Commit & Push
+        run: |
+          git config user.name "market-viewer-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add docs/MarketViewer.html docs/assets/ docs/data/
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "sync: market-viewer from static [skip ci]"
+            git push
+          fi
