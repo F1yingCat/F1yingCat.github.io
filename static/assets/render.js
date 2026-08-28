@@ -100,13 +100,19 @@
       '</div>';
   }
 
-  /* ========== Header 渲染 ========== */
+  /* ========== Header 渲染 ==========
+   * summary 允许 <b>（与 note 同语义），其它字段仍 esc
+   */
   function renderHeader(h) {
     if (!h) return '';
     const tags = (h.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('');
+    // 放行 <b>：先转义再反转 <b> / </b>，逻辑与 renderNote 一致
+    const summaryHtml = (h.summary || '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
     return `<div>${tags}</div>
       <h1>${esc(h.title || '')}</h1>
-      <p>${esc(h.summary || '')}</p>`;
+      <p>${summaryHtml}</p>`;
   }
 
   /* ========== Footer 渲染 ========== */
