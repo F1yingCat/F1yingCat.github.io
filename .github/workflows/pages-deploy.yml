@@ -1,18 +1,22 @@
 name: Deploy Pages
 
-# 三种触发：
-# 1. push main：Mavis 推数据 / Gmeek 跑完 push 之后，常规兜底
+# 触发策略：
+# 1. workflow_run (Sync MarketViewer to docs)：sync 完成后自动接 deploy
+#    - Mavis 改 static/data/postmarket 等文件 → sync 推 commit → 这里接 deploy
 # 2. workflow_dispatch：手动重部署
-# 3. workflow_run (Sync MarketViewer to docs)：market-viewer-sync 跑完后自动接 deploy
-#    - 这是关键：之前 sync 推完 commit 没触发 Pages 重新部署，导致 docs/data/postmarket/latest.json
-#      在 main 分支已经更新但 Pages 服务的还是旧版本（10 分钟 CDN 缓存内）
-#    - 现在 sync 跑完会自动接 deploy，15 秒内线上就能看到新数据
-# 不监听 Gmeek workflow_run，因为 Gmeek.yml 内部已经有 build + deploy jobs，会自己处理
+#
+# 不监听 push！原因：
+#   - push 会同时触发 Gmeek 或 sync，sync 自己又会推一个新 commit
+#   - 如果 pages-deploy 监听 push，会和 Gmeek 内置的 deploy job 重复部署，导致 race condition
+#   - 现在统一走 workflow_run，Gmeek 完成后会触发 sync，sync 完成后 workflow_run 触发
+#     本次 deploy，最终部署的是 sync 推的最新 docs/
+#
+# 不监听 Gmeek 的 workflow_run：
+#   - Gmeek.yml 内部已经有 build + deploy jobs
+#   - Gmeek 完成后还会触发 sync，sync 完成后 workflow_run 也会触发本次 deploy
+#   - 链条已经覆盖 Gmeek 路径，多监听一次会重复
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
   workflow_run:
     workflows: ["Sync MarketViewer to docs"]
@@ -23,18 +27,17 @@ permissions:
   pages: write
   id-token: write
 
-# 和 Gmeek 部署错开，避免并发部署（GitHub Pages 同一时间只能一个 deploy 跑）
+# 避免和 Gmeek deploy 撞车：同 group 内排队（不 cancel，让两者都跑完）
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
   deploy:
-    # 三个 trigger 各自的判断：
-    # - push / workflow_dispatch：直接跑
-    # - workflow_run (sync)：只有 sync 成功才跑（sync 失败就别部署了）
+    # workflow_run 触发时，只有 sync 成功才部署（sync 失败别部署）
+    # workflow_dispatch 触发时直接跑
     if: >-
-      github.event_name != 'workflow_run' ||
+      github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
     environment:
       name: github-pages
@@ -44,7 +47,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         # workflow_run 触发时，checkout sync commit 的 head（包含 sync 推的 docs/）
-        # push 触发时，checkout main
+        # workflow_dispatch 触发时，checkout main
         with:
           ref: >-
             ${{
