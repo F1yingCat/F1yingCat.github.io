@@ -1,18 +1,41 @@
 name: Deploy Pages
 
+# 三种触发：
+# 1. push main：Mavis 推数据 / Gmeek 跑完 push 之后，常规兜底
+# 2. workflow_dispatch：手动重部署
+# 3. workflow_run (Sync MarketViewer to docs)：market-viewer-sync 跑完后自动接 deploy
+#    - 这是关键：之前 sync 推完 commit 没触发 Pages 重新部署，导致 docs/data/postmarket/latest.json
+#      在 main 分支已经更新但 Pages 服务的还是旧版本（10 分钟 CDN 缓存内）
+#    - 现在 sync 跑完会自动接 deploy，15 秒内线上就能看到新数据
+# 不监听 Gmeek workflow_run，因为 Gmeek.yml 内部已经有 build + deploy jobs，会自己处理
+
 on:
   push:
     branches:
       - main
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Sync MarketViewer to docs"]
+    types: [completed]
 
 permissions:
   contents: read
   pages: write
   id-token: write
 
+# 和 Gmeek 部署错开，避免并发部署（GitHub Pages 同一时间只能一个 deploy 跑）
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 jobs:
   deploy:
+    # 三个 trigger 各自的判断：
+    # - push / workflow_dispatch：直接跑
+    # - workflow_run (sync)：只有 sync 成功才跑（sync 失败就别部署了）
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -20,6 +43,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        # workflow_run 触发时，checkout sync commit 的 head（包含 sync 推的 docs/）
+        # push 触发时，checkout main
+        with:
+          ref: >-
+            ${{
+              github.event_name == 'workflow_run' &&
+              github.event.workflow_run.head_sha ||
+              'main'
+            }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
