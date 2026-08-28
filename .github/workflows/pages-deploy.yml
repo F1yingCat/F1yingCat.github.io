@@ -60,7 +60,7 @@ jobs:
         uses: actions/configure-pages@v6   # 2026-03 起 Node 24
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3   # v3 仍受官方维护，能跑 Node 24，暂不强制升级
+        uses: actions/upload-pages-artifact@v4   # 2025-08 发布，内部 pin upload-artifact 到 Node 24 SHA；v3 内部仍用 upload-artifact@v4 触发 deprecation warning
         with:
           path: 'docs'
 
