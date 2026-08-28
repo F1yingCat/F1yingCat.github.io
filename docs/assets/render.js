@@ -234,11 +234,23 @@
           }]
         };
       } else if (chart.type === 'line') {
-        // 折线图（支持多 series、双 Y 轴）
+        // 折线图（支持多 series、双 Y 轴、自定义 tooltip、三元组 data、虚线）
         const series = chart.series || [];
         const hasDualY = series.length > 1 && series.some(s => s.yAxisIndex === 1);
+        // 自定义 tooltip formatter：chart.tooltipFormatter 是 JS 函数体字符串
+        // 用 new Function 编译（json 是我们自己写的，安全可控）
+        const tooltipOpt = { trigger: 'axis' };
+        if (typeof chart.tooltipFormatter === 'string') {
+          try {
+            tooltipOpt.formatter = new Function('params', chart.tooltipFormatter);
+          } catch (e) {
+            // 解析失败就用默认
+          }
+        } else if (typeof chart.tooltipFormatter === 'function') {
+          tooltipOpt.formatter = chart.tooltipFormatter;
+        }
         option = {
-          tooltip: { trigger: 'axis' },
+          tooltip: tooltipOpt,
           legend: {
             top: 0,
             textStyle: { fontSize: 11 },
@@ -254,7 +266,6 @@
           yAxis: hasDualY ? [
             {
               type: 'value',
-              // 删掉 name 和 nameTextStyle：双 Y 轴的 name 标签会跟顶部 legend 按钮视觉撞车
               position: 'left',
               axisLabel: { fontSize: 10 }
             },
@@ -266,7 +277,8 @@
             }
           ] : {
             type: 'value',
-            axisLabel: { fontSize: 10 }
+            axisLabel: { fontSize: 10 },
+            ...(chart.yLabel ? { name: chart.yLabel, nameTextStyle: { fontSize: 10, color: '#6b7280' } } : {})
           },
           series: series.map(s => ({
             name: s.name,
@@ -274,10 +286,11 @@
             data: s.data,
             smooth: true,
             yAxisIndex: s.yAxisIndex || 0,
-            lineStyle: { color: s.color, width: 2 },
+            lineStyle: { color: s.color, width: 2, type: s.lineType || 'solid' },
             itemStyle: { color: s.color },
             symbol: 'circle',
-            symbolSize: 6
+            symbolSize: 6,
+            encode: s.encode  // 支持 [y, extra1, extra2] 三元组，如 {y: 0}
           }))
         };
       } else {
