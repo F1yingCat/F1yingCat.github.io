@@ -46,15 +46,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5   # 2025-08 起 Node 24（v4 在 Node 20，会触发 deprecation warning）
-        # workflow_run 触发时，checkout sync commit 的 head（包含 sync 推的 docs/）
-        # workflow_dispatch 触发时，checkout main
+        # 直接 checkout main。
+        # 注意：之前用 github.event.workflow_run.head_sha 是个 bug——那个值
+        # 实际上是触发 sync 的那个 commit（也就是 Mavis 推的那个），并不是
+        # sync 自己 push 上去的新 commit。所以 deploy 一直在用 Mavis commit
+        # 的 working tree 部署，docs/ 永远是上一版，site 永远落后一拍。
+        # sync 跑完时新 commit 已经在 main 上了，checkout main 拿到的就是
+        # sync 推的最新 docs/。
         with:
-          ref: >-
-            ${{
-              github.event_name == 'workflow_run' &&
-              github.event.workflow_run.head_sha ||
-              'main'
-            }}
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v6   # 2026-03 起 Node 24
