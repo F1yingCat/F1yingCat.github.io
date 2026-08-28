@@ -193,22 +193,25 @@
       }));
 
       let option;
+      // 通用 axisLabel formatter 模板：chart.axisFormat (可选，缺省 {value})
+      // 例: '折溢价 (%)' 图表里设 axisFormat: '{value}%' 让 0.05 显示成 0.05%
+      const axisFmt = chart.axisFormat || '{value}';
       if (chart.type === 'bar-h') {
         option = {
-          tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: '{b}: {c}%' },
+          tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: chart.tooltipFormat || '{b}: {c}' },
           grid: { left: 84, right: 24, top: 14, bottom: 20 },
-          xAxis: { type: 'value', axisLabel: { formatter: '{value}%' } },
+          xAxis: { type: 'value', axisLabel: { formatter: axisFmt } },
           yAxis: { type: 'category', data: chart.categories || [] },
           series: [{ type: 'bar', data }]
         };
       } else if (chart.type === 'bar') {
         option = {
-          tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: '{b}: {c}%' },
+          tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: chart.tooltipFormat || '{b}: {c}' },
           grid: { left: 48, right: 24, top: chart.markLine ? 40 : 14, bottom: 22 },
           xAxis: { type: 'category', data: chart.categories || [] },
           yAxis: {
             type: 'value',
-            axisLabel: { formatter: '{value}%' },
+            axisLabel: { formatter: axisFmt },
             max: chart.yMax,
             min: chart.yMin
           },
@@ -267,17 +270,17 @@
             {
               type: 'value',
               position: 'left',
-              axisLabel: { fontSize: 10 }
+              axisLabel: { fontSize: 10, formatter: axisFmt }
             },
             {
               type: 'value',
               position: 'right',
-              axisLabel: { fontSize: 10 },
+              axisLabel: { fontSize: 10, formatter: axisFmt },
               splitLine: { show: false }
             }
           ] : {
             type: 'value',
-            axisLabel: { fontSize: 10 },
+            axisLabel: { fontSize: 10, formatter: axisFmt },
             ...(chart.yLabel ? { name: chart.yLabel, nameTextStyle: { fontSize: 10, color: '#6b7280' } } : {})
           },
           series: series.map(s => ({
