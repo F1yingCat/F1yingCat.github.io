@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5   # 2025-08 起 Node 24（v4 在 Node 20，会触发 deprecation warning）
         # workflow_run 触发时，checkout sync commit 的 head（包含 sync 推的 docs/）
         # workflow_dispatch 触发时，checkout main
         with:
@@ -57,13 +57,13 @@ jobs:
             }}
 
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6   # 2026-03 起 Node 24
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v3   # v3 仍受官方维护，能跑 Node 24，暂不强制升级
         with:
           path: 'docs'
 
       - id: deployment
         name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5   # 2025-07 起 Node 24

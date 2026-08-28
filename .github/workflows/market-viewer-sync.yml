@@ -29,7 +29,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5   # 2025-08 起 Node 24（v4 在 Node 20，会触发 deprecation warning）
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
