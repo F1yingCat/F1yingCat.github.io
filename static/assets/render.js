@@ -205,6 +205,8 @@
       const dom = document.getElementById(`chart-${chart.id}`);
       if (!dom || !window.echarts) return;
       const inst = echarts.init(dom);
+      // 全局字号 +1(让轴标签/legend/tooltip 更清晰)
+      inst.setOption({ textStyle: { fontSize: 13 } });
       registerChart(inst);
 
       const data = (chart.data || []).map(d => ({
@@ -293,10 +295,12 @@
             axisLabel: { fontSize: 10 }
           },
           yAxis: hasDualY ? [
-            { type: 'value', position: 'left', axisLabel: { fontSize: 10, formatter: axisFmt } },
-            { type: 'value', position: 'right', axisLabel: { fontSize: 10, formatter: axisFmt }, splitLine: { show: false } }
+            // scale:true 让 ECharts 自动从数据实际范围开始,不再强制 0 起点
+            { type: 'value', position: 'left', scale: true, axisLabel: { fontSize: 10, formatter: axisFmt } },
+            { type: 'value', position: 'right', scale: true, axisLabel: { fontSize: 10, formatter: axisFmt }, splitLine: { show: false } }
           ] : {
             type: 'value',
+            scale: true,
             axisLabel: { fontSize: 10, formatter: axisFmt },
             ...(chart.yLabel ? { name: chart.yLabel, nameTextStyle: { fontSize: 10, color: '#6b7280' } } : {})
           },
