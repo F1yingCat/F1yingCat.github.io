@@ -1,6 +1,13 @@
-/* MarketViewer 渲染器（多页面版）
+/* MarketViewer 渲染器（多页面版 + 桌面响应式）
  * 数据源：data/manifest.json（页面清单） + data/<page>/latest.json（各页数据）
  * 加新页面：① 在 data/<page>/latest.json 写数据 ② 在 manifest.json 加一条
+ *
+ * 桌面端（>= 900px）：
+ *   - Tabs 移到顶部 sticky topbar
+ *   - Sections 2-col 网格，KPI / 大图 横跨双列
+ *   - 有图表的 section 内部：表格 + 图表左右并排
+ *   - 更大的图表高度（CSS 控制）
+ * 移动端：保持原有堆叠布局
  */
 (function () {
   'use strict';
@@ -12,6 +19,10 @@
     ]
   };
 
+  const DESKTOP_MQ = window.matchMedia('(min-width: 900px)');
+  // 所有 section 都是 1 col 卡片,宽度相等 — 不再有全宽 banner
+  const WIDE_SECTION_IDS = new Set();
+
   /* ========== 工具：转义 HTML ========== */
   function esc(s) {
     return String(s == null ? '' : s)
@@ -20,6 +31,52 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
   }
+
+  /* ========== 设备检测 ========== */
+  function isDesktop() { return DESKTOP_MQ.matches; }
+
+  /* ========== 主题切换 ========== */
+  const Theme = (function () {
+    const KEY = 'mv-theme';
+    function get() {
+      return localStorage.getItem(KEY) ||
+        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    }
+    function apply(t) {
+      document.documentElement.setAttribute('data-theme', t);
+      const btn = document.getElementById('theme-toggle');
+      if (btn) btn.textContent = t === 'dark' ? '☀️' : '🌙';
+    }
+    function toggle() {
+      const next = get() === 'dark' ? 'light' : 'dark';
+      localStorage.setItem(KEY, next);
+      apply(next);
+      // 触发 ECharts resize（主题切换可能影响容器尺寸）
+      requestAnimationFrame(resizeAllCharts);
+    }
+    function init() {
+      apply(get());
+      const btn = document.getElementById('theme-toggle');
+      if (btn) btn.addEventListener('click', toggle);
+      // 跟随系统主题变化（仅在用户没显式选择时）
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+        if (!localStorage.getItem(KEY)) apply(e.matches ? 'dark' : 'light');
+      });
+    }
+    return { init, get, apply };
+  })();
+
+  /* ========== 图表实例管理（用于 resize） ========== */
+  const chartInstances = [];
+  function registerChart(inst) { chartInstances.push(inst); }
+  function resizeAllCharts() {
+    chartInstances.forEach(inst => { try { inst.resize(); } catch (_) {} });
+  }
+  window.addEventListener('resize', () => {
+    // 防抖
+    clearTimeout(window.__mvResizeT);
+    window.__mvResizeT = setTimeout(resizeAllCharts, 120);
+  });
 
   /* ========== 单元格渲染 ==========
    * 支持的 cell 形式：
@@ -36,11 +93,9 @@
     if (typeof c === 'string') return `<td>${esc(c)}</td>`;
     if (typeof c !== 'object') return `<td>${esc(c)}</td>`;
 
-    // 收集额外的 class（如 col-code 隐藏列、自定义 className）
     const extraCls = c.className ? ' ' + esc(c.className) : '';
 
     if (c.type === 'code') {
-      // code 类型默认加 col-code（隐藏列），除非显式覆盖
       const codeCls = c.className || 'col-code';
       return `<td class="code ${esc(codeCls)}">${esc(c.text)}</td>`;
     }
@@ -48,16 +103,14 @@
       return `<td><span class="pill ${esc(c.level || 'near')}">${esc(c.text)}</span></td>`;
     }
     if (c.type === 'source' || (c.fallback !== undefined && c.text === undefined)) {
-      // 简写：{ "fallback": true } 或 { "fallback": true, "text": "📡" } 或 { "text": "聚源" }
       if (c.fallback) {
         return `<td><span class="srcfallback">${esc(c.text || '📡')}</span></td>`;
       }
-      return `<td>${esc(c.text || '聚源')}</td>`;
+      return `<td><span class="source-ok">${esc(c.text || '聚源')}</span></td>`;
     }
     if (c.type === 'html') {
       return `<td>${c.html || ''}</td>`;
     }
-    // 默认：带方向的文本
     const dir = c.dir ? esc(c.dir) : '';
     const classes = [dir, (c.className || '').trim()].filter(Boolean).join(' ');
     return classes ? `<td class="${classes}">${esc(c.text || '')}</td>` : `<td>${esc(c.text || '')}</td>`;
@@ -67,12 +120,6 @@
     return '<tr>' + row.map(renderCell).join('') + '</tr>';
   }
 
-  /* ========== 表格渲染 ==========
-   * columns: ["标的", "代码", ...]
-   *   也支持 [{key:"code", className:"col-code"}] 这种带隐藏列的
-   * rows: [[cell, cell, ...], ...]
-   * colGroups: 隐藏列控制 [{type:'col', show:false}]（可选）
-   */
   function renderTable(columns, rows) {
     const thead = '<thead><tr>' +
       columns.map(c => {
@@ -82,10 +129,10 @@
       }).join('') +
       '</tr></thead>';
     const tbody = '<tbody>' + rows.map(renderRow).join('') + '</tbody>';
-    return `<table>${thead}${tbody}</table>`;
+    // 包一层 .table-wrap,移动端列多时横向滚动
+    return `<div class="table-wrap"><table>${thead}${tbody}</table></div>`;
   }
 
-  /* ========== KPI 卡片渲染 ========== */
   function renderKpis(kpis) {
     if (!kpis || !kpis.length) return '';
     return '<div class="kpi-row">' +
@@ -100,33 +147,22 @@
       '</div>';
   }
 
-  /* ========== Header 渲染 ==========
-   * summary 允许 <b>（与 note 同语义），其它字段仍 esc
-   */
   function renderHeader(h) {
     if (!h) return '';
     const tags = (h.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('');
-    // 放行 <b>：先转义再反转 <b> / </b>，逻辑与 renderNote 一致
     const summaryHtml = (h.summary || '')
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
-    return `<div>${tags}</div>
+    return `<div class="tags-row">${tags}</div>
       <h1>${esc(h.title || '')}</h1>
       <p>${summaryHtml}</p>`;
   }
 
-  /* ========== Footer 渲染 ========== */
   function renderFooter(f) {
     if (!f) return '';
     return esc(f.text || '');
   }
 
-  /* ========== Source 渲染（支持 srcfallback 高亮片段） ==========
-   * sourceParts: [
-   *    {text:"来源：聚源 · ..."},
-   *    {fallback:true, text:"📡 web_search 兜底"}
-   * ]
-   */
   function renderSource(parts) {
     if (typeof parts === 'string') return `<div class="src">${esc(parts)}</div>`;
     if (!Array.isArray(parts)) return '';
@@ -140,28 +176,24 @@
     return `<div class="src">${html}</div>`;
   }
 
-  /* ========== Note 渲染（允许 <b>） ========== */
-  function renderNote(note) {
-    if (!note) return '';
-    // 简单处理：只放行 <b>，其它按需扩展
-    const html = note.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
-    return `<div class="note">${html}</div>`;
+  function renderNote(note, source) {
+    if (!note && !source) return '';
+    const noteHtml = note ? note.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>') : '';
+    const sourceHtml = source ? renderSource(source) : '';
+    // source 也折进 note 里 — 默认折叠,展开后看完整内容
+    return `<details class="note"><summary>📝 详情 / 解读</summary>
+      <div class="note-body">
+        ${sourceHtml}
+        ${noteHtml}
+      </div>
+    </details>`;
   }
 
   /* ========== ECharts 渲染 ==========
    * chart: {
-   *   id: "us_equity",
-   *   type: "bar-h" | "bar" | "bar-single" | "line",
-   *   xLabel / yLabel:  轴标签（可选）
-   *   categories: ["..."],
-   *   data: [{"value":0.21, "color":"#e23c3c"}, ...],   // bar 系列
-   *   series: [{name, data, color, yAxisIndex}, ...],    // line 系列
-   *   title: "DXY (预警 100)",      // bar-single
-   *   yMin / yMax,                  // 可选
-   *   markLine: [                   // 可选
-   *     {yAxis:100, color:"#e23c3c", label:"预警 100", position:"end|insideEndTop"}
-   *   ]
+   *   id, type:"bar-h"|"bar"|"bar-single"|"line",
+   *   categories, data, series, markLine, ...
    * }
    */
   function renderChart(chart) {
@@ -169,11 +201,11 @@
     const el = document.createElement('div');
     el.id = `chart-${chart.id}`;
     el.className = 'chart';
-    // 渲染完成后初始化
     setTimeout(() => {
       const dom = document.getElementById(`chart-${chart.id}`);
       if (!dom || !window.echarts) return;
       const inst = echarts.init(dom);
+      registerChart(inst);
 
       const data = (chart.data || []).map(d => ({
         value: d.value,
@@ -193,15 +225,14 @@
       }));
 
       let option;
-      // 通用 axisLabel formatter 模板：chart.axisFormat (可选，缺省 {value})
-      // 例: '折溢价 (%)' 图表里设 axisFormat: '{value}%' 让 0.05 显示成 0.05%
       const axisFmt = chart.axisFormat || '{value}';
       if (chart.type === 'bar-h') {
         option = {
           tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: chart.tooltipFormat || '{b}: {c}' },
           grid: { left: 84, right: 24, top: 14, bottom: 20 },
           xAxis: { type: 'value', axisLabel: { formatter: axisFmt } },
-          yAxis: { type: 'category', data: chart.categories || [] },
+          // inverse: true 让 yAxis 从上到下排,跟表格行序一致
+          yAxis: { type: 'category', data: chart.categories || [], inverse: true },
           series: [{ type: 'bar', data }]
         };
       } else if (chart.type === 'bar') {
@@ -237,18 +268,13 @@
           }]
         };
       } else if (chart.type === 'line') {
-        // 折线图（支持多 series、双 Y 轴、自定义 tooltip、三元组 data、虚线）
         const series = chart.series || [];
         const hasDualY = series.length > 1 && series.some(s => s.yAxisIndex === 1);
-        // 自定义 tooltip formatter：chart.tooltipFormatter 是 JS 函数体字符串
-        // 用 new Function 编译（json 是我们自己写的，安全可控）
         const tooltipOpt = { trigger: 'axis' };
         if (typeof chart.tooltipFormatter === 'string') {
           try {
             tooltipOpt.formatter = new Function('params', chart.tooltipFormatter);
-          } catch (e) {
-            // 解析失败就用默认
-          }
+          } catch (e) {}
         } else if (typeof chart.tooltipFormatter === 'function') {
           tooltipOpt.formatter = chart.tooltipFormatter;
         }
@@ -267,17 +293,8 @@
             axisLabel: { fontSize: 10 }
           },
           yAxis: hasDualY ? [
-            {
-              type: 'value',
-              position: 'left',
-              axisLabel: { fontSize: 10, formatter: axisFmt }
-            },
-            {
-              type: 'value',
-              position: 'right',
-              axisLabel: { fontSize: 10, formatter: axisFmt },
-              splitLine: { show: false }
-            }
+            { type: 'value', position: 'left', axisLabel: { fontSize: 10, formatter: axisFmt } },
+            { type: 'value', position: 'right', axisLabel: { fontSize: 10, formatter: axisFmt }, splitLine: { show: false } }
           ] : {
             type: 'value',
             axisLabel: { fontSize: 10, formatter: axisFmt },
@@ -293,7 +310,7 @@
             itemStyle: { color: s.color },
             symbol: 'circle',
             symbolSize: 6,
-            encode: s.encode  // 支持 [y, extra1, extra2] 三元组，如 {y: 0}
+            encode: s.encode
           }))
         };
       } else {
@@ -304,54 +321,91 @@
     return el.outerHTML;
   }
 
-  /* ========== Section 渲染 ========== */
+  /* ========== Section 渲染 ==========
+   * 自动给 section 加 class：
+   *   kpi-strip    — type==='kpi'，桌面端用 4 列 KPI 横排
+   *   has-chart    — 含图表，桌面端内部 table + chart 左右并排
+   *   span-2       — 横跨双列：KPI strip / 含双 Y 轴折线图 / 指定 id
+   */
   function renderSection(s) {
     if (!s) return '';
+
     const isKpi = s.type === 'kpi';
+    const hasCharts = !!(s.charts && s.charts.length);
+    const hasTable = !!(s.columns && s.rows);
+    const hasKpis = !!(s.kpis && s.kpis.length);
+    const isWideById = s.id && WIDE_SECTION_IDS.has(s.id);
+    // 桌面端左右并排：必须同时有 table 和 chart，且没有 kpis
+    const useSideLayout = !isKpi && hasTable && hasCharts && !hasKpis;
+
+    const classes = [];
+    if (isKpi) classes.push('kpi-strip');
+    if (useSideLayout) classes.push('has-chart');
+    // KPI 段(type:kpi)横着占满全宽 — 每个页面的"一"都是关键指标 banner
+    if (isKpi || isWideById) classes.push('span-2');
+    const clsAttr = classes.length ? ` class="${classes.join(' ')}"` : '';
+
     let body;
     if (isKpi) {
       body = renderKpis(s.kpis);
     } else {
-      // 普通 section：如果有 kpis 字段，先渲染 KPI 卡片
-      body = s.kpis ? renderKpis(s.kpis) : '';
-      body += (s.source ? renderSource(s.source) : '') +
-        (s.columns && s.rows ? renderTable(s.columns, s.rows) : '') +
-        (s.charts ? s.charts.map(renderChart).join('') : '') +
+      // source 和 note 都折进 note 里(默认折叠),不在外面单独渲染
+      const inner = (hasKpis ? renderKpis(s.kpis) : '') +
+        (hasTable ? renderTable(s.columns, s.rows) : '') +
+        (hasCharts ? s.charts.map(renderChart).join('') : '') +
         (s.legend ? `<div class="legend">${esc(s.legend)}</div>` : '') +
-        (s.note ? renderNote(s.note) : '');
+        renderNote(s.note, s.source);
+      // 桌面端：有 table + chart 的 section 把 inner 装到 .body 里，CSS 做左右并排
+      body = useSideLayout ? `<div class="body">${inner}</div>` : inner;
     }
 
-    return `<section>
+    return `<section${clsAttr} id="sec-${esc(s.id || '')}">
       <h2><span class="bar"></span>${esc(s.title || '')}</h2>
       ${body}
     </section>`;
   }
 
-  /* ========== Tab 切换 ========== */
+  /* ========== Tab 切换（双容器：floating + mobile） ========== */
   function renderTabs(pages, activeId) {
-    const el = document.getElementById('tabs');
-    if (!pages || !pages.length) {
-      el.innerHTML = '';
-      return;
-    }
-    el.innerHTML = pages.map(p => {
+    const makeBtn = (p) => {
       const active = p.id === activeId ? ' active' : '';
       const icon = p.icon ? `<span class="ico">${esc(p.icon)}</span>` : '';
       return `<button type="button" data-page="${esc(p.id)}" class="${active.trim()}">
         ${icon}${esc(p.label)}
       </button>`;
-    }).join('');
+    };
 
-    el.onclick = (e) => {
+    const floating = document.getElementById('floating-tabs');
+    const mobile = document.getElementById('mobile-tabs');
+    if (!pages || !pages.length) {
+      if (floating) floating.innerHTML = '';
+      if (mobile) mobile.innerHTML = '';
+      return;
+    }
+    // 桌面 floating 卡片: 左侧 brand-dot + 按钮组
+    const floatingHTML = `<span class="brand-dot" title="Market Viewer">📈</span>` +
+      pages.map(makeBtn).join('');
+    const mobileHTML = pages.map(makeBtn).join('');
+
+    if (floating) floating.innerHTML = floatingHTML;
+    if (mobile) mobile.innerHTML = mobileHTML;
+
+    const onClick = (e) => {
       const btn = e.target.closest('button[data-page]');
       if (!btn) return;
       const page = pages.find(x => x.id === btn.dataset.page);
       if (!page) return;
-      // 切换 active 态
-      [...el.querySelectorAll('button')].forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+      // 同步 active 态到两个容器
+      [floating, mobile].forEach(el => {
+        if (!el) return;
+        [...el.querySelectorAll('button')].forEach(b => b.classList.remove('active'));
+        const match = el.querySelector(`button[data-page="${page.id}"]`);
+        if (match) match.classList.add('active');
+      });
       loadPage(page);
     };
+    if (floating) floating.onclick = onClick;
+    if (mobile) mobile.onclick = onClick;
   }
 
   /* ========== 加载单个页面 ========== */
@@ -372,19 +426,25 @@
 
   /* ========== 渲染单个页面的内容 ========== */
   function renderPage(data) {
-    // header
     document.getElementById('header').innerHTML = renderHeader(data.header);
 
-    // 主体
+    // 清空旧 chart 实例（页面切换时释放）
+    chartInstances.length = 0;
+
     const content = document.getElementById('content');
     const sections = (data.sections || []).map(renderSection).join('');
     content.innerHTML = sections || '<div class="load-error" style="color:var(--sub)">该页面暂无内容</div>';
 
-    // footer
     document.getElementById('footer').textContent = renderFooter(data.footer);
-
-    // 浏览器标题
     if (data.title) document.title = data.title;
+
+    // 更新 topbar 右上角"最后更新"时间（从 header.tags 找 🕐 开头的那条）
+    const updatedTag = (data.header && data.header.tags || []).find(t => /🕐|最后更新/.test(t));
+    const updatedEl = document.getElementById('last-updated');
+    if (updatedEl) {
+      updatedEl.textContent = updatedTag ? updatedTag.replace(/^🕐\s*/, '').replace(/最后更新\s*/, '') : '';
+      updatedEl.style.display = updatedTag ? '' : 'none';
+    }
   }
 
   function showError(msg) {
@@ -394,6 +454,8 @@
 
   /* ========== 启动 ========== */
   async function init() {
+    Theme.init();
+
     let manifest;
     try {
       const r = await fetch(MANIFEST_URL, { cache: 'no-store' });
