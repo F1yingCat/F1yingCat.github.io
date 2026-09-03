@@ -196,19 +196,12 @@
   @keyframes fadeUp{from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:none;}}
 
   /* =================================================== */
-  /* ========== MOBILE: 列多表格压缩 + 横滑提示 ========== */
+  /* ========== MOBILE: 列多表格压缩 + 横滑 ========== */
   /* =================================================== */
   @media (max-width: 599px) {
     .table-wrap table{ font-size:12.5px; }
     .table-wrap th, .table-wrap td{ padding:5px 6px; }
     .table-wrap thead th{ padding:6px 6px; font-size:11.5px; }
-    /* 横滑 affordance:右侧渐隐 */
-    .table-wrap{ position:relative; }
-    .table-wrap::after{
-      content:""; position:absolute; top:0; right:0; bottom:0; width:18px;
-      background:linear-gradient(to right, transparent, var(--card));
-      pointer-events:none;
-    }
   }
 
   /* =================================================== */
