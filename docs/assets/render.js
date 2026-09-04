@@ -214,12 +214,12 @@
         itemStyle: d.color ? { color: d.color } : undefined
       }));
 
-      const markLineData = (chart.markLine || []).map(m => ({
+      const markLineData = (Array.isArray(chart.markLine) ? chart.markLine : (chart.markLine?.data || [])).map(m => ({
         yAxis: m.yAxis,
         xAxis: m.xAxis,
         lineStyle: { type: 'dashed', color: m.color || '#e23c3c' },
         label: {
-          formatter: m.label || '',
+          formatter: m.label || m.name || '',
           color: m.color || '#e23c3c',
           position: m.position || 'end',
           fontSize: 10
@@ -310,7 +310,7 @@
             data: s.data,
             smooth: true,
             yAxisIndex: s.yAxisIndex || 0,
-            lineStyle: { color: s.color, width: 2, type: s.lineType || 'solid' },
+            lineStyle: { color: s.color, width: 2, type: s.lineType || s.lineStyle || 'solid' },
             itemStyle: { color: s.color },
             symbol: 'circle',
             symbolSize: 6,
