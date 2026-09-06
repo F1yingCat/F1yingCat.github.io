@@ -23,6 +23,15 @@
   // 所有 section 都是 1 col 卡片,宽度相等 — 不再有全宽 banner
   const WIDE_SECTION_IDS = new Set();
 
+  // 桌面端「成对叠放」配置:两个 section 共享一个外层 grid cell,内部各占 50% 高
+  // 只对桌面端生效,移动端 stack-pair 退化为单列
+  const STACK_PAIRS_BY_PAGE = {
+    premarket: [
+      ['us_yield', 'fx'],   // 三、四
+      ['oil', 'metal']      // 五、六
+    ]
+  };
+
   /* ========== 工具：转义 HTML ========== */
   function esc(s) {
     return String(s == null ? '' : s)
@@ -420,7 +429,7 @@
       const r = await fetch(page.data, { cache: 'no-store' });
       if (!r.ok) throw new Error('HTTP ' + r.status + ' (' + page.data + ')');
       const data = await r.json();
-      renderPage(data);
+      renderPage(data, page.id);
     } catch (err) {
       content.innerHTML =
         `<div class="load-error">⚠️ 加载 <code>${esc(page.data)}</code> 失败<br><br>
@@ -429,15 +438,42 @@
   }
 
   /* ========== 渲染单个页面的内容 ========== */
-  function renderPage(data) {
+  function renderPage(data, pageId) {
     document.getElementById('header').innerHTML = renderHeader(data.header);
 
     // 清空旧 chart 实例（页面切换时释放）
     chartInstances.length = 0;
 
     const content = document.getElementById('content');
-    const sections = (data.sections || []).map(renderSection).join('');
-    content.innerHTML = sections || '<div class="load-error" style="color:var(--sub)">该页面暂无内容</div>';
+    const sections = data.sections || [];
+
+    // 桌面端成对叠放:把 pair 里的两个 section 包进 .stack-pair wrapper
+    const pairs = STACK_PAIRS_BY_PAGE[pageId] || [];
+    let html;
+    if (DESKTOP_MQ.matches && pairs.length) {
+      const used = new Set();
+      const parts = [];
+      for (const s of sections) {
+        if (!s || used.has(s.id)) continue;
+        const pair = pairs.find(p => p[0] === s.id);
+        if (pair) {
+          const s1 = sections.find(x => x.id === pair[0]);
+          const s2 = sections.find(x => x.id === pair[1]);
+          if (s1 && s2) {
+            parts.push(`<div class="stack-pair">${renderSection(s1)}${renderSection(s2)}</div>`);
+            used.add(s1.id); used.add(s2.id);
+            continue;
+          }
+        }
+        parts.push(renderSection(s));
+        used.add(s.id);
+      }
+      html = parts.join('');
+    } else {
+      html = sections.map(renderSection).join('');
+    }
+
+    content.innerHTML = html || '<div class="load-error" style="color:var(--sub)">该页面暂无内容</div>';
 
     document.getElementById('footer').textContent = renderFooter(data.footer);
     if (data.title) document.title = data.title;
