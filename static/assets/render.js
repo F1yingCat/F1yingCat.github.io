@@ -536,11 +536,11 @@
     const rect = trigger.getBoundingClientRect();
     const popH = body.offsetHeight;  // 真实高度(已 layout)
     const margin = 8;
-    // 默认在 trigger **上方**;上方空间不够才放下方
-    let top = rect.top - popH - 6;
+    // 默认在 trigger **上方**,浮窗底部紧贴 trigger 顶部(gap 0)
+    let top = rect.top - popH;
     if (top < margin) {
-      // 上方空间不够,放到下方
-      top = rect.bottom + 6;
+      // 上方空间不够,放到下方,浮窗顶部紧贴 trigger 底部
+      top = rect.bottom;
       if (top + popH + margin > window.innerHeight) {
         // 上下都不够,贴 viewport 顶部
         top = margin;
