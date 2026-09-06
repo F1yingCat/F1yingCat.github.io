@@ -521,12 +521,17 @@
   }
   function showPopover(body, trigger) {
     const rect = trigger.getBoundingClientRect();
-    // 优先放在 trigger 下方;若下方空间不够则放到 trigger 上方
+    // 默认在 trigger **上方**;上方空间不够才放下方
     const popH = Math.min(body.scrollHeight || 400, 480);
     const margin = 8;
-    let top = rect.bottom + 6;
-    if (top + popH + margin > window.innerHeight) {
-      top = Math.max(margin, rect.top - popH - 6);
+    let top = rect.top - popH - 6;
+    if (top < margin) {
+      // 上方空间不够,放到下方
+      top = rect.bottom + 6;
+      if (top + popH + margin > window.innerHeight) {
+        // 上下都不够,贴 viewport 顶部
+        top = margin;
+      }
     }
     // 左右夹在视口内
     const maxW = 520;
