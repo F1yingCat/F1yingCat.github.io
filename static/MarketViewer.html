@@ -153,28 +153,32 @@
 
   .chart{width:100%;height:200px;}
 
-  /* Note: 用 <details> 默认折叠,只显示 summary 一行 */
-  .note{
-    font-size:14px;color:var(--sub);
-    background:#f8fafc;border-left:3px solid var(--accent);
-    border-radius:0 6px 6px 0;line-height:1.55;margin-top:8px;
+  /* Note: popover 浮窗 — 点击按钮在下方弹出,点别处自动关闭 */
+  .popover-note{ margin-top:8px; }
+  .popover-trigger{
+    background:transparent; border:1px solid var(--line); border-radius:6px;
+    padding:5px 11px; font-size:12.5px; color:var(--accent);
+    cursor:pointer; font-family:inherit; font-weight:500;
+    display:inline-flex; align-items:center; gap:4px;
+    transition:background .15s, border-color .15s;
   }
-  [data-theme="dark"] .note{background:#0f1420;}
-  .note b{color:var(--ink);}
-  .note summary{
-    list-style:none; cursor:pointer; padding:7px 12px;
-    color:var(--accent); font-weight:600; font-size:14px;
-    display:flex; align-items:center; gap:4px;
-    user-select:none;
+  .popover-trigger:hover{ background:var(--accent-soft); border-color:var(--accent); }
+  .popover-trigger::before{
+    content:"▸"; font-size:10px; transition:transform .15s; display:inline-block;
   }
-  .note summary::-webkit-details-marker{ display:none; }
-  .note summary::before{
-    content:"▸"; transition:transform .15s; display:inline-block;
-    font-size:12px;
+  .popover-note.open .popover-trigger::before{ transform:rotate(90deg); }
+  .popover-body{
+    position:fixed; z-index:9999;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    padding:12px 14px; min-width:280px; max-width:520px;
+    font-size:12.5px; line-height:1.65; color:var(--sub);
+    box-shadow:0 8px 28px rgba(0,0,0,0.14), 0 2px 6px rgba(0,0,0,0.06);
+    overflow-wrap:break-word;
   }
-  .note[open] summary::before{ transform:rotate(90deg); }
-  .note-body{ padding:0 12px 8px; }
-  .note summary:hover{ background:var(--accent-soft); border-radius:6px; }
+  [data-theme="dark"] .popover-body{ background:#0f1420; box-shadow:0 8px 28px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.3); }
+  .popover-body[hidden]{ display:none; }
+  .popover-body b{ color:var(--ink); font-weight:600; }
+  .popover-body .src{ display:block; margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--line); color:var(--muted); font-size:11.5px; }
 
   /* ===== KPI cards ===== */
   .kpi-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:0;}
@@ -193,7 +197,8 @@
   .load-error{padding:30px 16px;text-align:center;color:var(--danger);font-size:15px;}
 
   section{animation:fadeUp .3s ease both;}
-  @keyframes fadeUp{from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:none;}}
+  /* 不能用 transform — 会让 section 成为 fixed 定位的 containing block,导致内部 popover 定位错位 */
+  @keyframes fadeUp{from{opacity:0;} to{opacity:1;}}
 
   /* =================================================== */
   /* ========== MOBILE: 列多表格压缩 + 横滑 ========== */
@@ -250,8 +255,7 @@
     .stack-pair > section{
       min-width:0; min-height:0;
     }
-    /* 内容超出 50% 高度时,允许内部横滑/竖滑而非挤压字号 */
-    .stack-pair > section{overflow:auto;}
+    /* 不加 overflow:auto,让 popover 浮窗溢出可见 */
 
     /* Section 内部 */
     section{
