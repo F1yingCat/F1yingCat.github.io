@@ -529,10 +529,14 @@
     if (body.parentElement !== document.body) {
       document.body.appendChild(body);
     }
+    // 先显示 + 限高,再量真实高度 — 避免 body 还在 hidden 时 scrollHeight=0
+    body.style.maxWidth = '520px';
+    body.style.maxHeight = '480px';
+    body.hidden = false;
     const rect = trigger.getBoundingClientRect();
-    // 默认在 trigger **上方**;上方空间不够才放下方
-    const popH = Math.min(body.scrollHeight || 400, 480);
+    const popH = body.offsetHeight;  // 真实高度(已 layout)
     const margin = 8;
+    // 默认在 trigger **上方**;上方空间不够才放下方
     let top = rect.top - popH - 6;
     if (top < margin) {
       // 上方空间不够,放到下方
@@ -543,16 +547,13 @@
       }
     }
     // 左右夹在视口内
-    const maxW = 520;
     let left = rect.left;
-    if (left + maxW + margin > window.innerWidth) {
-      left = window.innerWidth - maxW - margin;
+    if (left + 520 + margin > window.innerWidth) {
+      left = window.innerWidth - 520 - margin;
     }
     if (left < margin) left = margin;
     body.style.top = top + 'px';
     body.style.left = left + 'px';
-    body.style.maxWidth = maxW + 'px';
-    body.hidden = false;
   }
   document.addEventListener('click', (e) => {
     const trigger = e.target.closest('.popover-trigger');

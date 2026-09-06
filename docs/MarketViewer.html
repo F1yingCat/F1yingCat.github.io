@@ -281,11 +281,13 @@
     /* has-chart: chart 高一点(220-240px),让线趋势更清楚 */
     section.has-chart > .body{
       display:flex; flex-direction:column; gap:8px;
-      flex:0 0 auto;
+      flex:1 1 auto; min-height:0;
     }
     section.has-chart > .body > .chart{
       height:220px !important; flex:0 0 auto;
     }
+    /* has-chart section 内的 popover-note 用 margin-top:auto 推到 .body 最底(=section 最底) */
+    section.has-chart > .body > .popover-note{ margin-top:auto; }
     section.span-2 > .chart{
       flex:0 0 auto; min-height:0;
     }
