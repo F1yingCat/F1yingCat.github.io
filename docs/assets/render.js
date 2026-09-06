@@ -190,13 +190,14 @@
     const noteHtml = note ? note.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>') : '';
     const sourceHtml = source ? renderSource(source) : '';
-    // source 也折进 note 里 — 默认折叠,展开后看完整内容
-    return `<details class="note"><summary>📝 详情 / 解读</summary>
-      <div class="note-body">
+    // popover 浮窗:点击 trigger 在下方展开,点击别处自动关闭
+    return `<div class="popover-note">
+      <button type="button" class="popover-trigger">📝 详情 / 解读</button>
+      <div class="popover-body" hidden>
         ${sourceHtml}
         ${noteHtml}
       </div>
-    </details>`;
+    </div>`;
   }
 
   /* ========== ECharts 渲染 ==========
@@ -512,6 +513,66 @@
     renderTabs(manifest.pages, manifest.pages[0].id);
     await loadPage(manifest.pages[0]);
   }
+
+  // 全局 popover 浮窗行为:点击 trigger 切换,点击别处关闭
+  function closeAllPopovers() {
+    document.querySelectorAll('.popover-body').forEach(b => { if (!b.hidden) trackClose(); b.hidden = true; });
+    document.querySelectorAll('.popover-note.open').forEach(w => w.classList.remove('open'));
+  }
+  function showPopover(body, trigger) {
+    const rect = trigger.getBoundingClientRect();
+    // 优先放在 trigger 下方;若下方空间不够则放到 trigger 上方
+    const popH = Math.min(body.scrollHeight || 400, 480);
+    const margin = 8;
+    let top = rect.bottom + 6;
+    if (top + popH + margin > window.innerHeight) {
+      top = Math.max(margin, rect.top - popH - 6);
+    }
+    // 左右夹在视口内
+    const maxW = 520;
+    let left = rect.left;
+    if (left + maxW + margin > window.innerWidth) {
+      left = window.innerWidth - maxW - margin;
+    }
+    if (left < margin) left = margin;
+    body.style.top = top + 'px';
+    body.style.left = left + 'px';
+    body.style.maxWidth = maxW + 'px';
+    body.hidden = false;
+  }
+  document.addEventListener('click', (e) => {
+    const trigger = e.target.closest('.popover-trigger');
+    if (trigger) {
+      e.stopPropagation();
+      const wrap = trigger.closest('.popover-note');
+      const body = wrap && wrap.querySelector('.popover-body');
+      if (!body) return;
+      const wasHidden = body.hidden;
+      closeAllPopovers();
+      if (wasHidden) {
+        showPopover(body, trigger);
+        wrap.classList.add('open');
+        trackOpen();
+      }
+      return;
+    }
+    if (!e.target.closest('.popover-body')) {
+      closeAllPopovers();
+    }
+  });
+  // 滚动 / resize 时关闭浮窗(只在有 popover open 时生效,避免 scrollIntoView 等程序化滚动误关)
+  let popoverOpenCount = 0;
+  function trackOpen(){ popoverOpenCount++; }
+  function trackClose(){ popoverOpenCount = Math.max(0, popoverOpenCount - 1); }
+  function maybeCloseOnScroll(){
+    if (popoverOpenCount > 0) closeAllPopovers();
+  }
+  window.addEventListener('scroll', maybeCloseOnScroll, { passive: true });
+  window.addEventListener('resize', maybeCloseOnScroll);
+  // ESC 也关闭
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeAllPopovers();
+  });
 
   init();
 })();
