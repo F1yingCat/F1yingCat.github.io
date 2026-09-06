@@ -196,7 +196,7 @@
     // 用同源 id,避免 Math.random 两次不一致
     pid = 'p' + (Math.random().toString(36).slice(2, 7) + Math.random().toString(36).slice(2, 7));
     return `<div class="popover-note">
-      <button type="button" class="popover-trigger" data-popover-id="${pid}">📝 详情 / 解读</button>
+      <button type="button" class="popover-trigger" data-popover-id="${pid}"></button>
       <div class="popover-body" data-popover-id="${pid}" hidden>
         ${sourceHtml}
         ${noteHtml}
