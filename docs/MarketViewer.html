@@ -242,6 +242,21 @@
     #content > .load-error{grid-column:1 / -1;}
     #content > section.span-2{grid-column:1 / -1;}
 
+    /* Stack-pair: 两个 section 共享 1 col,内部 1fr 1fr 各占 50% 高 */
+    .stack-pair{
+      display:grid; grid-template-rows:1fr 1fr; gap:10px;
+      min-width:0; min-height:0;
+    }
+    .stack-pair > section{
+      min-width:0; min-height:0;
+    }
+    /* 紧凑叠放:内容字号、padding 略减,避免溢出 50% 高 */
+    .stack-pair > section{padding:9px 11px;}
+    .stack-pair > section h2{font-size:13.5px; margin-bottom:4px;}
+    .stack-pair > section table{font-size:11px;}
+    .stack-pair > section th, .stack-pair > section td{padding:5px 5px;}
+    .stack-pair > section .note{font-size:11px; padding:7px 10px; margin-top:6px;}
+
     /* Section 内部 */
     section{
       display:flex; flex-direction:column;
