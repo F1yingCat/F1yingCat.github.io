@@ -190,10 +190,14 @@
     const noteHtml = note ? note.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>') : '';
     const sourceHtml = source ? renderSource(source) : '';
-    // popover 浮窗:点击 trigger 在下方展开,点击别处自动关闭
+    // popover 浮窗:trigger 和 body 用同一个 popover-id(避免用 .popover-note 父级
+    // 因为后续 showPopover 会把 body appendChild 到 <body> 末尾脱离所有 SC)
+    let pid = 'p' + Math.random().toString(36).slice(2, 9);
+    // 用同源 id,避免 Math.random 两次不一致
+    pid = 'p' + (Math.random().toString(36).slice(2, 7) + Math.random().toString(36).slice(2, 7));
     return `<div class="popover-note">
-      <button type="button" class="popover-trigger">📝 详情 / 解读</button>
-      <div class="popover-body" hidden>
+      <button type="button" class="popover-trigger" data-popover-id="${pid}">📝 详情 / 解读</button>
+      <div class="popover-body" data-popover-id="${pid}" hidden>
         ${sourceHtml}
         ${noteHtml}
       </div>
@@ -520,6 +524,11 @@
     document.querySelectorAll('.popover-note.open').forEach(w => w.classList.remove('open'));
   }
   function showPopover(body, trigger) {
+    // 关键:第一次显示时把 body appendChild 到 <body> 末尾,
+    // 彻底脱离 popover-note 父级(避免 thead sticky z:1 / stack-pair SC 干扰 fixed 定位)
+    if (body.parentElement !== document.body) {
+      document.body.appendChild(body);
+    }
     const rect = trigger.getBoundingClientRect();
     // 默认在 trigger **上方**;上方空间不够才放下方
     const popH = Math.min(body.scrollHeight || 400, 480);
@@ -549,14 +558,16 @@
     const trigger = e.target.closest('.popover-trigger');
     if (trigger) {
       e.stopPropagation();
-      const wrap = trigger.closest('.popover-note');
-      const body = wrap && wrap.querySelector('.popover-body');
+      const pid = trigger.dataset.popoverId;
+      // body 可能已被 appendChild 到 body 末尾,所以用 dataset.popoverId 全局查找
+      const body = document.querySelector(`.popover-body[data-popover-id="${pid}"]`);
       if (!body) return;
+      const wrap = trigger.closest('.popover-note');
       const wasHidden = body.hidden;
       closeAllPopovers();
       if (wasHidden) {
         showPopover(body, trigger);
-        wrap.classList.add('open');
+        if (wrap) wrap.classList.add('open');
         trackOpen();
       }
       return;
