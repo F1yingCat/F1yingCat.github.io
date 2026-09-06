@@ -250,12 +250,8 @@
     .stack-pair > section{
       min-width:0; min-height:0;
     }
-    /* 紧凑叠放:内容字号、padding 略减,避免溢出 50% 高 */
-    .stack-pair > section{padding:9px 11px;}
-    .stack-pair > section h2{font-size:13.5px; margin-bottom:4px;}
-    .stack-pair > section table{font-size:11px;}
-    .stack-pair > section th, .stack-pair > section td{padding:5px 5px;}
-    .stack-pair > section .note{font-size:11px; padding:7px 10px; margin-top:6px;}
+    /* 内容超出 50% 高度时,允许内部横滑/竖滑而非挤压字号 */
+    .stack-pair > section{overflow:auto;}
 
     /* Section 内部 */
     section{
