@@ -268,12 +268,17 @@
     header.top p{font-size:14px; line-height:1.65;}
     .tag{font-size:12.5px; padding:2px 10px;}
 
-    /* KPI strip: 全宽 banner,auto-fit 排 KPI(支持 5-8 个一行) */
+    /* KPI strip: 全宽 banner
+       1920 大屏(>1600)→ 8 个一行(1800/8≈225px,数字紧凑但可读)
+       笔记本 1200-1600 → 4 个一行 ×2 排(8 个整齐,数字放大)
+       992-1199 切 2-col grid → KPI 4 个一行 ×2 排
+       768-991 同样 4 个一行(容器更窄,数字需缩)
+       ≤767 走 mobile */
     .kpi-row{display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; margin-top:0;}
     section.kpi-strip .kpi-row{
       display:grid;
-      grid-template-columns:repeat(auto-fit, minmax(var(--kpi-min), 1fr));
-      gap:6px;
+      grid-template-columns:repeat(4, 1fr);
+      gap:8px;
     }
     .kpi{padding:7px 10px;}
     .kpi .lbl{font-size:var(--kpi-lbl);}
