@@ -4,6 +4,26 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Market Viewer</title>
+<script>
+  // Zoom 适配:Windows 150% / 200% 系统 DPI 缩放下,反向补偿
+  // 桌面端有 outerWidth(>=innerWidth)且 zoom>1.05 → 整体等比反向缩放
+  // 让 1920 设计在 zoom 1.5x 系统缩放屏上按 1280 物理宽装下(密度跟 1280 设计一致)
+  (function() {
+    var outerW = window.outerWidth, innerW = window.innerWidth;
+    if (!outerW || !innerW || outerW <= innerW) return;
+    var zoom = Math.round((outerW / innerW) * 100) / 100;
+    if (zoom <= 1.05) return;
+    var scale = 1 / zoom;
+    // 整体反向缩放(html zoom 包含所有子元素)
+    var de = document.documentElement;
+    de.style.zoom = scale;
+    // 拉宽 html 让缩放后物理宽 = innerWidth 物理(装满屏幕)
+    de.style.width = (100 * zoom) + '%';
+    de.style.minHeight = '100vh';
+    de.style.margin = '0';
+    de.style.background = getComputedStyle(document.body).backgroundColor || '';
+  })();
+</script>
 <script src="assets/echarts.min.js"></script>
 <style>
   :root{
@@ -15,6 +35,17 @@
     --source-ok:#1a9e57; --source-fallback:#e8973c;
     --header-grad-a:#2f5fd0; --header-grad-b:#3f7be0;
     --float-bg:rgba(255,255,255,.92); --float-border:#e5e7eb;
+    /* 响应式断点变量(默认 = 1920 大屏基线) */
+    --section-pad: 13px 15px;
+    --chart-h: 220px;
+    --kpi-val: 20px;
+    --kpi-chg: 12.5px;
+    --kpi-lbl: 13px;
+    --kpi-min: 115px;
+    --table-size: 14px;
+    --h2-size: 15.5px;
+    --wrap-pad: 60px 24px 24px;
+    --content-max-w: none;  /* 大屏不加 max-width,完全展开 */
   }
   [data-theme="dark"]{
     --bg:#0a0e16; --card:#131927; --ink:#e6ebf2; --sub:#9aa6b8; --muted:#6b7587;
@@ -218,17 +249,18 @@
   }
 
   /* =================================================== */
-  /* ========== DESKTOP (>= 900px) ==================== */
+  /* ========== DESKTOP (>= 768px) ==================== */
+  /* 基础桌面规则(768-1199 用基础值,大屏用 @media 覆盖) */
   /* =================================================== */
-  @media (min-width: 900px) {
+  @media (min-width: 768px) {
     .mobile-tabs{ display:none; }
     .floating-tabs{ display:flex; }
     .floating-meta{ display:flex; }
 
-    /* Wrap: full width, minimal padding (floating cards own their space) */
-    .wrap{max-width:none; padding:60px 20px 20px;}
+    /* Wrap: 默认 60px 20px 20px,大屏覆盖 */
+    .wrap{max-width:var(--content-max-w); padding:var(--wrap-pad);}
 
-    /* Hero: 紧凑,但文字不截断,允许 wrap 多行 */
+    /* Hero: 紧凑 */
     header.top{
       padding:14px 20px; border-radius:12px; margin-bottom:12px;
     }
@@ -236,33 +268,34 @@
     header.top p{font-size:14px; line-height:1.65;}
     .tag{font-size:12.5px; padding:2px 10px;}
 
-    /* KPI strip: 全宽 banner,内部 auto-fit 排 KPI(支持 5-8 个一行) */
+    /* KPI strip: 全宽 banner,auto-fit 排 KPI(支持 5-8 个一行) */
     .kpi-row{display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; margin-top:0;}
     section.kpi-strip .kpi-row{
       display:grid;
-      grid-template-columns:repeat(auto-fit, minmax(115px, 1fr));
+      grid-template-columns:repeat(auto-fit, minmax(var(--kpi-min), 1fr));
       gap:6px;
     }
     .kpi{padding:7px 10px;}
-    .kpi .lbl{font-size:12px;}
-    .kpi .val{font-size:17px;}
-    .kpi .chg{font-size:11.5px; line-height:1.4;}
+    .kpi .lbl{font-size:var(--kpi-lbl);}
+    .kpi .val{font-size:var(--kpi-val);}
+    .kpi .chg{font-size:var(--kpi-chg); line-height:1.4;}
 
-    /* Content: 3-col grid,所有 section 默认 1 col
-       align-items: start 让 section 高度 = 内容(不被同行拉伸),
-       这样 trigger 紧贴自己 section 实际内容底部,浮窗位置精确 */
+    /* Content: 3-col grid 默认;992-1199 切 2-col 在下面覆盖
+       默认 stretch 让同行 section 等高(用户要求等高卡片) */
     #content{
       display:grid; grid-template-columns:repeat(3, 1fr); gap:10px;
-      align-items: start;
     }
     #content > .load-error{grid-column:1 / -1;}
     #content > section.span-2{grid-column:1 / -1;}
 
     /* Stack-pair: 两个 section 共享 1 col,内部 grid
-       rows:auto 让 row 高度 = 内容,section 高度 = 内容(不被拉伸),
-       trigger 紧贴自己 section 实际内容底部,浮窗位置精确 */
+       auto auto 让 row 高度 = 各自内容(不被拉伸),避免长内容溢出
+       align-self: start 让 stack-pair 自身不被外层 grid stretch 拉高
+       (否则 #content 默认 stretch 会把 stack-pair 拉到同行最高,内部 auto 也被平均拉伸 → 长内容溢出) */
     .stack-pair{
       display:grid; grid-template-rows:auto auto; gap:10px;
+      grid-column: span 1;
+      align-self: start;  /* 不被外层 #content stretch */
       min-width:0; min-height:0;
     }
     .stack-pair > section{
@@ -273,25 +306,25 @@
     /* Section 内部 */
     section{
       display:flex; flex-direction:column;
-      padding:12px 14px; border-radius:10px; margin-bottom:0;
+      padding:var(--section-pad); border-radius:10px; margin-bottom:0;
     }
-    section h2{font-size:15px; margin-bottom:5px; flex:0 0 auto;}
+    section h2{font-size:var(--h2-size); margin-bottom:5px; flex:0 0 auto;}
     section h2 .bar{width:3px; height:14px;}
 
     /* PC 表格(数字更大更清晰) */
-    table{font-size:14px; flex:0 0 auto;}
+    table{font-size:var(--table-size); flex:0 0 auto;}
     thead th{padding:7px 9px; font-size:13px;}
     th,td{padding:6px 9px;}
 
-    /* has-chart: chart 高一点(220-240px),让线趋势更清楚 */
+    /* has-chart: chart 高度从变量取 */
     section.has-chart > .body{
       display:flex; flex-direction:column; gap:8px;
       flex:1 1 auto; min-height:0;
     }
     section.has-chart > .body > .chart{
-      height:220px !important; flex:0 0 auto;
+      height:var(--chart-h); flex:0 0 auto;
     }
-    /* has-chart section 内的 popover-note 用 margin-top:auto 推到 .body 最底(=section 最底) */
+    /* has-chart section 内的 popover-note 用 margin-top:auto 推到 .body 最底 */
     section.has-chart > .body > .popover-note{ margin-top:auto; }
     section.span-2 > .chart{
       flex:0 0 auto; min-height:0;
@@ -302,25 +335,83 @@
       margin-top:auto;
     }
 
-    .chart{height:220px;}
+    .chart{height:var(--chart-h);}
 
     .note summary{ font-size:13px; padding:5px 11px; }
     .note-body{ font-size:13px; padding:0 11px 6px; }
     .note-body .src{ margin-bottom:5px; }
   }
 
-  /* Wide screens: 维持 3-col */
-  @media (min-width: 1600px) {
-    .wrap{padding:60px 24px 24px;}
-    section{padding:13px 15px;}
-    .kpi{padding:9px 12px;}
-    .kpi .val{font-size:20px;}
-    .kpi .lbl{font-size:13px;}
-    .kpi .chg{font-size:12.5px;}
-    section h2{font-size:15.5px;}
-    table{font-size:14px;}
-    th,td{padding:7px 9px;}
-    .chart{height:240px;}
+  /* =================================================== */
+  /* ========== BREAKPOINTS (Bootstrap 5 风格) ========= */
+  /* 顺序从大到小(max-width 限定),min-width 优先级更具体 */
+  /* =================================================== */
+
+  /* 大屏 ≥1920: 内容居中,左右留白,不过散 */
+  @media (min-width: 1920px) {
+    :root { --content-max-w: 1800px; }
+  }
+
+  /* 大屏 1600-1919: 已有样式,变量值已经是 1920 的 */
+  @media (min-width: 1600px) and (max-width: 1919px) {
+    :root {
+      --wrap-pad: 60px 24px 24px;
+      --section-pad: 13px 15px;
+      --chart-h: 220px;
+      --kpi-val: 20px;
+      --kpi-chg: 12.5px;
+      --kpi-lbl: 13px;
+      --table-size: 14px;
+      --h2-size: 15.5px;
+    }
+  }
+
+  /* 1200-1399: 笔记本标准,3-col 压缩 */
+  @media (min-width: 1200px) and (max-width: 1399px) {
+    :root {
+      --wrap-pad: 56px 18px 18px;
+      --section-pad: 11px 13px;
+      --chart-h: 200px;
+      --kpi-val: 18px;
+      --kpi-chg: 12px;
+      --kpi-lbl: 12.5px;
+      --kpi-min: 105px;
+      --table-size: 13.5px;
+      --h2-size: 15px;
+    }
+  }
+
+  /* 992-1199: 小桌面,切 2-col + 压缩 */
+  @media (min-width: 992px) and (max-width: 1199px) {
+    :root {
+      --wrap-pad: 50px 16px 16px;
+      --section-pad: 10px 12px;
+      --chart-h: 180px;
+      --kpi-val: 17px;
+      --kpi-chg: 11.5px;
+      --kpi-lbl: 12px;
+      --kpi-min: 100px;
+      --table-size: 13px;
+      --h2-size: 14.5px;
+    }
+    /* 切 2-col: 仍用 auto-fit 让 KPI banner 内部自适应,但外层 #content 改 2-col */
+    #content{ grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* 768-991: 平板,2-col 更紧凑 */
+  @media (min-width: 768px) and (max-width: 991px) {
+    :root {
+      --wrap-pad: 44px 14px 14px;
+      --section-pad: 9px 11px;
+      --chart-h: 160px;
+      --kpi-val: 16px;
+      --kpi-chg: 11px;
+      --kpi-lbl: 11.5px;
+      --kpi-min: 95px;
+      --table-size: 12.5px;
+      --h2-size: 14px;
+    }
+    #content{ grid-template-columns: repeat(2, 1fr); }
   }
 </style>
 </head>
