@@ -263,14 +263,12 @@
 
     /* KPI strip: 全宽 banner
        1920 大屏(>1600)→ 8 个一行(1800/8≈225px,数字紧凑但可读)
-       笔记本 1200-1600 → 4 个一行 ×2 排(8 个整齐,数字放大)
-       992-1199 切 2-col grid → KPI 3 个一行 ×3 排(8+1 空,数字更宽)
-       768-991 同样 3 个一行(容器更窄,数字需缩)
-       ≤767 走 mobile */
+       桌面 768+ 全部 3×3 (8+1 空,卡宽 230-380 渐进)
+       ≤767 走 mobile(2×4,8 整齐) */
     .kpi-row{display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; margin-top:0;}
     section.kpi-strip .kpi-row{
       display:grid;
-      grid-template-columns:repeat(4, 1fr);
+      grid-template-columns:repeat(3, 1fr);
       gap:8px;
     }
     .kpi{padding:7px 10px;}
@@ -347,7 +345,8 @@
 
   /* 大屏 ≥1920: 内容居中,左右留白,不过散 */
   @media (min-width: 1920px) {
-    :root { --content-max-w: 1800px; }
+    /* 大屏容器限宽 1440(原 1800),让 3×3 KPI 卡 ~440(比 600 紧凑) */
+    :root { --content-max-w: 1440px; }
   }
 
   /* 大屏 1600-1919: 已有样式,变量值已经是 1920 的 */
@@ -392,12 +391,11 @@
       --table-size: 13px;
       --h2-size: 14.5px;
     }
-    /* 切 2-col: 外层 #content 改 2-col;KPI banner 改 3 列(8+1 空) */
+    /* 切 2-col: 外层 #content 改 2-col;KPI banner 保持 3×3 (基线已设) */
     #content{ grid-template-columns: repeat(2, 1fr); }
-    section.kpi-strip .kpi-row{ grid-template-columns: repeat(3, 1fr); }
   }
 
-  /* 768-991: 平板,2-col 更紧凑,KPI 3×3 */
+  /* 768-991: 平板,2-col 更紧凑,KPI 3×3 保持 */
   @media (min-width: 768px) and (max-width: 991px) {
     :root {
       --wrap-pad: 44px 14px 14px;
@@ -411,7 +409,6 @@
       --h2-size: 14px;
     }
     #content{ grid-template-columns: repeat(2, 1fr); }
-    section.kpi-strip .kpi-row{ grid-template-columns: repeat(3, 1fr); }
   }
 </style>
 </head>
