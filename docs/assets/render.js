@@ -19,16 +19,17 @@
     ]
   };
 
-  const DESKTOP_MQ = window.matchMedia('(min-width: 900px)');
+  const DESKTOP_MQ = window.matchMedia('(min-width: 768px)');
   // 所有 section 都是 1 col 卡片,宽度相等 — 不再有全宽 banner
   const WIDE_SECTION_IDS = new Set();
 
-  // 桌面端「成对叠放」配置:两个 section 共享一个外层 grid cell,内部各占 50% 高
+  // 桌面端「成对叠放」配置:两个 section 共享一个外层 grid cell,内部上下排
   // 只对桌面端生效,移动端 stack-pair 退化为单列
+  // postmarket 不配对(内容长度差异大,等高 1fr 1fr 会溢出)
   const STACK_PAIRS_BY_PAGE = {
     premarket: [
-      ['us_yield', 'fx'],   // 三、四
-      ['oil', 'metal']      // 五、六
+      ['us_yield', 'fx'],   // 三、美债 / 四、美元
+      ['oil', 'metal']      // 五、原油 / 六、黄金
     ]
   };
 
