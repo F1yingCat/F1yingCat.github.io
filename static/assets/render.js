@@ -436,6 +436,11 @@
       if (!r.ok) throw new Error('HTTP ' + r.status + ' (' + page.data + ')');
       const data = await r.json();
       renderPage(data, page.id);
+      // 切页后强制 ECharts resize + 关闭 popovers(位置可能错)
+      setTimeout(() => {
+        resizeAllCharts();
+        document.querySelectorAll('.popover-body').forEach(b => b.hidden = true);
+      }, 30);
     } catch (err) {
       content.innerHTML =
         `<div class="load-error">⚠️ 加载 <code>${esc(page.data)}</code> 失败<br><br>

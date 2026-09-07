@@ -4,25 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Market Viewer</title>
+<!-- 不再做 zoom 适配(测试发现 body/documentElement zoom 在切页后会导致 grid 跑版) -->
+<!-- 建议:Chrome 浏览器缩放改 100%(治本) — Windows 150% DPI 缩放下不会"挤" -->
 <script>
-  // Zoom 适配:Windows 150% / 200% 系统 DPI 缩放下,反向补偿
-  // 桌面端有 outerWidth(>=innerWidth)且 zoom>1.05 → 整体等比反向缩放
-  // 让 1920 设计在 zoom 1.5x 系统缩放屏上按 1280 物理宽装下(密度跟 1280 设计一致)
-  (function() {
-    var outerW = window.outerWidth, innerW = window.innerWidth;
-    if (!outerW || !innerW || outerW <= innerW) return;
-    var zoom = Math.round((outerW / innerW) * 100) / 100;
-    if (zoom <= 1.05) return;
-    var scale = 1 / zoom;
-    // 整体反向缩放(html zoom 包含所有子元素)
-    var de = document.documentElement;
-    de.style.zoom = scale;
-    // 拉宽 html 让缩放后物理宽 = innerWidth 物理(装满屏幕)
-    de.style.width = (100 * zoom) + '%';
-    de.style.minHeight = '100vh';
-    de.style.margin = '0';
-    de.style.background = getComputedStyle(document.body).backgroundColor || '';
-  })();
+  // 切页/窗口变化时强制 ECharts resize + 关闭 popover
+  // (即使没 zoom,切页后内容重渲染,popover 位置可能错)
+  window.addEventListener('resize', function() {
+    setTimeout(function() {
+      try {
+        if (typeof resizeAllCharts === 'function') resizeAllCharts();
+      } catch(e) {}
+    }, 200);
+  });
 </script>
 <script src="assets/echarts.min.js"></script>
 <style>
