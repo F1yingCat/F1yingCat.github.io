@@ -287,8 +287,8 @@
       } else if (chart.type === 'line') {
         const series = chart.series || [];
         const hasDualY = series.length > 1 && series.some(s => s.yAxisIndex === 1);
-        // 5+ series 时图例 2 行(36px),需预留底部空间;其他 1 行(18px)
-        const legendHeight = series.length >= 5 ? 36 : 18;
+        // 5+ series 时图例折 3+2 两行,grid.top 需预留 50px(单行图例 32px 够)
+        const gridTop = series.length >= 5 ? 50 : 32;
         const tooltipOpt = { trigger: 'axis' };
         if (typeof chart.tooltipFormatter === 'string') {
           try {
@@ -299,16 +299,17 @@
         }
         option = {
           tooltip: tooltipOpt,
-          // legend 放 chart 底部,避免跟顶部 yAxis name 重叠(Vercel/Linear 风格)
+          // legend 顶部,5+ series 紧凑排(itemWidth 60, 3 个一行)
           legend: {
-            bottom: 0,
+            top: 0,
             textStyle: { fontSize: 11 },
             itemGap: series.length >= 5 ? 4 : 10,
-            itemWidth: series.length >= 5 ? 14 : 25,
+            // 5+ series itemWidth 60 让 3 个一行(60×3+gap×2=188,容器 425 容得下)
+            // 其他 25 默认
+            itemWidth: series.length >= 5 ? 60 : 25,
             data: series.map(s => s.name)
           },
-          // grid.bottom 给 legend 留空间(top 32 给 yAxis name,跟 legend 不冲突)
-          grid: { left: 50, right: hasDualY ? 60 : 24, top: 32, bottom: legendHeight + 18 },
+          grid: { left: 50, right: hasDualY ? 60 : 24, top: gridTop, bottom: 24 },
           xAxis: {
             type: 'category',
             data: chart.categories || [],
@@ -322,10 +323,17 @@
           ] : {
             type: 'value',
             scale: true,
-            axisLabel: { fontSize: 10, formatter: axisFmt },
-            // yAxis name 保留,放 yAxis 顶部(end),不跟底部 legend 冲突
-            ...(chart.yLabel ? { name: chart.yLabel, nameLocation: 'end', nameGap: 8, nameTextStyle: { fontSize: 10, color: '#6b7280' } } : {})
+            axisLabel: { fontSize: 10, formatter: axisFmt }
           },
+          // yAxis name 用 graphic 文本放 chart 容器左上角(yLabel 字符串),不跟 legend 重叠
+          ...(chart.yLabel && !hasDualY ? {
+            graphic: [{
+              type: 'text',
+              left: 8,
+              top: gridTop - 16,  // 紧贴 grid.top 上方(图例下方)
+              style: { text: chart.yLabel, fontSize: 10, fill: '#6b7280' }
+            }]
+          } : {}),
           series: series.map(s => ({
             name: s.name,
             type: 'line',
