@@ -756,9 +756,9 @@
           }
         },
         {
-          "id": "futures_basis_5d_2612",
+          "id": "futures_basis_5d_2612_if",
           "type": "line",
-          "title": "次主力 2612 季月(虚线 = 同日主力参考)",
+          "title": "次主力 2612·IF(沪深300 季月)",
           "categories": [
             "08/28",
             "08/31",
@@ -781,7 +781,34 @@
                 -100.82
               ],
               "lineStyle": "dashed"
-            },
+            }
+          ],
+          "yLabel": "贴水 (点)",
+          "axisFormat": "{value}",
+          "tooltipFormat": "{b}: {c} 点",
+          "markLine": {
+            "data": [
+              {
+                "yAxis": 0,
+                "name": "0 平水线"
+              }
+            ]
+          }
+        },
+        {
+          "id": "futures_basis_5d_2612_ic_im",
+          "type": "line",
+          "title": "次主力 2612·IC 中证500 + IM 中证1000 季月(数值相近,共用 y 轴)",
+          "categories": [
+            "08/28",
+            "08/31",
+            "09/01",
+            "09/02",
+            "09/03",
+            "09/04",
+            "09/07"
+          ],
+          "series": [
             {
               "name": "IC2612 (季月次主力)",
               "data": [

@@ -213,6 +213,7 @@
    */
   function renderChart(chart) {
     if (!chart || !chart.id) return '';
+    const titleHtml = chart.title ? `<div class="chart-title">${esc(chart.title)}</div>` : '';
     const el = document.createElement('div');
     el.id = `chart-${chart.id}`;
     el.className = 'chart';
@@ -352,7 +353,7 @@
       }
       inst.setOption(option);
     }, 0);
-    return el.outerHTML;
+    return titleHtml + el.outerHTML;
   }
 
   /* ========== Section 渲染 ==========
