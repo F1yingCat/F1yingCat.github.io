@@ -287,8 +287,8 @@
       } else if (chart.type === 'line') {
         const series = chart.series || [];
         const hasDualY = series.length > 1 && series.some(s => s.yAxisIndex === 1);
-        // 5+ series 时图例会换两行,grid.top 需预留 50px(单行图例 32px 够)
-        const gridTop = series.length >= 5 ? 50 : 32;
+        // 5+ series 时图例 2 行(36px),需预留底部空间;其他 1 行(18px)
+        const legendHeight = series.length >= 5 ? 36 : 18;
         const tooltipOpt = { trigger: 'axis' };
         if (typeof chart.tooltipFormatter === 'string') {
           try {
@@ -299,15 +299,16 @@
         }
         option = {
           tooltip: tooltipOpt,
+          // legend 放 chart 底部,避免跟顶部 yAxis name 重叠(Vercel/Linear 风格)
           legend: {
-            top: 0,
+            bottom: 0,
             textStyle: { fontSize: 11 },
-            // 5+ series 紧凑排,减少换行概率
             itemGap: series.length >= 5 ? 4 : 10,
             itemWidth: series.length >= 5 ? 14 : 25,
             data: series.map(s => s.name)
           },
-          grid: { left: 50, right: hasDualY ? 60 : 24, top: gridTop, bottom: 24 },
+          // grid.bottom 给 legend 留空间(top 32 给 yAxis name,跟 legend 不冲突)
+          grid: { left: 50, right: hasDualY ? 60 : 24, top: 32, bottom: legendHeight + 18 },
           xAxis: {
             type: 'category',
             data: chart.categories || [],
@@ -321,9 +322,9 @@
           ] : {
             type: 'value',
             scale: true,
-            axisLabel: { fontSize: 10, formatter: axisFmt }
-            // line chart 不显示 yAxis name(name 跟顶部 legend 重叠),
-            // yLabel 信息(单位/含义)由用户在 chart.yLabel 字段外另写说明
+            axisLabel: { fontSize: 10, formatter: axisFmt },
+            // yAxis name 保留,放 yAxis 顶部(end),不跟底部 legend 冲突
+            ...(chart.yLabel ? { name: chart.yLabel, nameLocation: 'end', nameGap: 8, nameTextStyle: { fontSize: 10, color: '#6b7280' } } : {})
           },
           series: series.map(s => ({
             name: s.name,
