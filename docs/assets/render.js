@@ -299,14 +299,14 @@
         }
         option = {
           tooltip: tooltipOpt,
-          // legend 顶部,5+ series 紧凑排(itemWidth 60, 3 个一行)
+          // legend 顶部,5+ series 紧凑排(itemWidth 20 让 line 短, 3+2 排开)
           legend: {
             top: 0,
             textStyle: { fontSize: 11 },
             itemGap: series.length >= 5 ? 4 : 10,
-            // 5+ series itemWidth 60 让 3 个一行(60×3+gap×2=188,容器 425 容得下)
+            // 5+ series itemWidth 20(line 短)+ 文字 50px,3 个一行总 ~210
             // 其他 25 默认
-            itemWidth: series.length >= 5 ? 60 : 25,
+            itemWidth: series.length >= 5 ? 20 : 25,
             data: series.map(s => s.name)
           },
           grid: { left: 50, right: hasDualY ? 60 : 24, top: gridTop, bottom: 24 },
