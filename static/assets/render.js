@@ -159,7 +159,12 @@
 
   function renderHeader(h) {
     if (!h) return '';
-    const tags = (h.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('');
+    // tag 加 class="tag tag-pop" + data-fulltext,点击触发 popover 显示全文
+    const tags = (h.tags || []).map((t, i) =>
+      `<span class="tag tag-pop" data-tag-idx="${i}">${esc(t)}</span>` +
+      // 隐藏的 popover body(全局唯一,显示当前 click 的 tag 全文)
+      `<div class="popover-body tag-popover" data-tag-idx="${i}" hidden>${esc(t)}</div>`
+    ).join('');
     const summaryHtml = (h.summary || '')
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
@@ -593,6 +598,21 @@
       if (wasHidden) {
         showPopover(body, trigger);
         if (wrap) wrap.classList.add('open');
+        trackOpen();
+      }
+      return;
+    }
+    // tag popover:点击 fact tag 显示全文
+    const tag = e.target.closest('.tag-pop');
+    if (tag) {
+      e.stopPropagation();
+      const idx = tag.dataset.tagIdx;
+      const body = document.querySelector(`.tag-popover[data-tag-idx="${idx}"]`);
+      if (!body) return;
+      const wasHidden = body.hidden;
+      closeAllPopovers();
+      if (wasHidden) {
+        showPopover(body, tag);
         trackOpen();
       }
       return;
