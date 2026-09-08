@@ -321,8 +321,9 @@
           ] : {
             type: 'value',
             scale: true,
-            axisLabel: { fontSize: 10, formatter: axisFmt },
-            ...(chart.yLabel ? { name: chart.yLabel, nameTextStyle: { fontSize: 10, color: '#6b7280' } } : {})
+            axisLabel: { fontSize: 10, formatter: axisFmt }
+            // line chart 不显示 yAxis name(name 跟顶部 legend 重叠),
+            // yLabel 信息(单位/含义)由用户在 chart.yLabel 字段外另写说明
           },
           series: series.map(s => ({
             name: s.name,
