@@ -542,10 +542,13 @@
       "title": "五、股指期货·主力 2609 + 次主力 2612·近 5 日贴水",
       "source": [
         {
-          "text": "来源：📡 中国金融期货交易所 cffex.com.cn 主力合约收盘 + 银河期货数据日报 + 同花顺 9/7 收评（web 兜底 9/2-9/7 主力贴水）"
+          "text": "来源：📡 中国金融期货交易所 cffex.com.cn 主力+次主力季月 9/8 收盘；申万期货/中财网 cfi.cn 9/2-9/7 季月收盘；银河期货数据日报主力贴水 9/2-9/4"
         },
         {
-          "text": "· 9/8 主力集体表现 IF -0.33% / IC +0.25% / IM +0.31%，对应贴水 IF -11.74 / IC -27.33 / IM -26.21，集体较 9/7 收窄 7-16 点（市场悲观情绪改善但仍贴水）"
+          "text": "· 9/8 主力集体表现 IF -0.33% / IC +0.25% / IM +0.31%，主力贴水 IF -11.74 / IC -27.33 / IM -26.21，较 9/7 收窄 7-16 点（市场悲观情绪改善但仍贴水）"
+        },
+        {
+          "text": "· 9/8 季月 2612 贴水 IF -97.54 / IC -229.13 / IM -253.41 / IH -69.00，较 9/4 季月贴水显著走阔（IC -148→-229 / IM -172→-253），远期情绪偏空加深"
         }
       ],
       "columns": [
@@ -578,8 +581,8 @@
             "dir": "down"
           },
           {
-            "text": "cffex /quote_IF.txt 远月 4461.20，昨结 4480.00（-0.42%），月差 -85.8",
-            "dir": "flat"
+            "text": "9/4 贴水 -94.45 → 9/8 -97.54 走阔 3.09 点（9/4 申万期货 4453.60 → 9/8 cffex 4461.20）",
+            "dir": "down"
           }
         ],
         [
@@ -604,8 +607,8 @@
             "dir": "down"
           },
           {
-            "text": "cffex /quote_IC.txt 远月 7541.60，昨结 7528.20（+0.18%），月差 -201.8",
-            "dir": "flat"
+            "text": "9/4 贴水 -148.69 → 9/8 -229.13 走阔 80.44 点（季月贴水大幅加深，远期情绪偏空）",
+            "dir": "down"
           }
         ],
         [
@@ -630,8 +633,8 @@
             "dir": "down"
           },
           {
-            "text": "cffex /quote_IM.txt 远月 7406.20，昨结 7388.80（+0.24%），月差 -227.2",
-            "dir": "flat"
+            "text": "9/4 贴水 -172.29 → 9/8 -253.41 走阔 81.12 点（季月贴水大幅加深，远期情绪偏空）",
+            "dir": "down"
           }
         ]
       ],
@@ -697,7 +700,7 @@
         {
           "id": "futures_basis_5d_2612",
           "type": "line",
-          "title": "次主力 2612 季月(虚线)·近 5 日贴水 (仅 9/8 cffex 数据)",
+          "title": "次主力 2612 季月(虚线)·近 5 日贴水",
           "categories": [
             "09/02",
             "09/03",
@@ -711,36 +714,52 @@
               "data": [
                 null,
                 null,
-                null,
+                -94.45,
                 null,
                 -97.54
               ],
               "lineStyle": "dashed",
-              "yAxisIndex": 0
+              "yAxisIndex": 1,
+              "connectNulls": false
             },
             {
-              "name": "IC2612 (季月·中证500) ⚠",
+              "name": "IC2612 (季月·中证500) 📡",
               "data": [
+                -250.03,
                 null,
-                null,
-                null,
-                null,
+                -148.69,
+                -241.37,
                 -229.13
               ],
               "lineStyle": "dashed",
-              "yAxisIndex": 0
+              "yAxisIndex": 0,
+              "connectNulls": false
             },
             {
               "name": "IM2612 (季月·中证1000) ⚠",
               "data": [
                 null,
                 null,
-                null,
+                -172.29,
                 null,
                 -253.41
               ],
               "lineStyle": "dashed",
-              "yAxisIndex": 0
+              "yAxisIndex": 0,
+              "connectNulls": false
+            },
+            {
+              "name": "IH2612 (季月·上证50) 📡",
+              "data": [
+                null,
+                null,
+                null,
+                -74.53,
+                -69.0
+              ],
+              "lineStyle": "dashed",
+              "yAxisIndex": 1,
+              "connectNulls": false
             }
           ],
           "yLabel": "贴水 (点)",
@@ -753,10 +772,12 @@
                 "name": "0 平水线"
               }
             ]
-          }
+          },
+          "yLabelLeft": "中证贴水 (点)",
+          "yLabelRight": "沪深300+上证50 贴水 (点)"
         }
       ],
-      "note": "次主力 2612 9/8 收盘取 cffex.com.cn /quote_*.txt 实时数据(IF 4461.20 / IC 7541.60 / IM 7406.20),5 日历史贴水 web 未拉到精确数据故 9/2-9/7 标 ⚠;主力 2609 9/8 收盘取 cffex /quote_*.txt(IF 4547.00 / IC 7743.40 / IM 7633.40)。cffex 接口见 /quote_<product>.txt（带 Referer header 防反爬）。"
+      "note": "次主力 2612 季月 5 日贴水（📡/⚠ 标源）：9/2 IC2612=7479.20 (cfi.cn), 9/4 IF/IC/IM2612=4453.60/7504.00/7335.80 (申万期货数据日报), 9/7 IC2612=7518.00 / IH2612=2837.20 (cfi.cn), 9/8 全部 cffex /quote_*.txt 直抓（IF 4461.20 / IC 7541.60 / IM 7406.20 / IH 2832.80）。9/2 IF/IM/IH 2612、9/3 全部、9/7 IF/IM 2612 无公开 web 数据 ⚠ 标 fallback 留空 (render.js 用 null 断开)。季月贴水 9/8 较 9/4 显著走阔（IC -148→-229 / IM -172→-253），远期情绪偏空加深。"
     },
     {
       "id": "next_focus",
