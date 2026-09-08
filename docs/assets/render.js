@@ -299,14 +299,13 @@
         }
         option = {
           tooltip: tooltipOpt,
-          // legend 顶部,5+ series 紧凑排(itemWidth 20 让 line 短, 3+2 排开)
+          // legend 顶部,统一紧凑排(itemWidth 20 + itemGap 6 让 line 短,右侧留位给 yAxis name)
           legend: {
             top: 0,
             textStyle: { fontSize: 11 },
-            itemGap: series.length >= 5 ? 4 : 10,
-            // 5+ series itemWidth 20(line 短)+ 文字 50px,3 个一行总 ~210
-            // 其他 25 默认
-            itemWidth: series.length >= 5 ? 20 : 25,
+            itemGap: 6,
+            // line chart 全部 itemWidth 20(line 短),3 series 时 3 个一行也够
+            itemWidth: 20,
             data: series.map(s => s.name)
           },
           grid: { left: 50, right: hasDualY ? 60 : 24, top: gridTop, bottom: 24 },
@@ -325,12 +324,13 @@
             scale: true,
             axisLabel: { fontSize: 10, formatter: axisFmt }
           },
-          // yAxis name 用 graphic 文本放 chart 容器左上角(yLabel 字符串),不跟 legend 重叠
+          // yAxis name 用 graphic 文本放 chart 容器右上角(yLabel 字符串),不跟 legend 重叠
+          // (左上角在多 chart section 里会跟其他 chart 的 yAxis label 撞,右上角更安全)
           ...(chart.yLabel && !hasDualY ? {
             graphic: [{
               type: 'text',
-              left: 8,
-              top: gridTop - 16,  // 紧贴 grid.top 上方(图例下方)
+              right: 8,
+              top: 6,
               style: { text: chart.yLabel, fontSize: 10, fill: '#6b7280' }
             }]
           } : {}),
