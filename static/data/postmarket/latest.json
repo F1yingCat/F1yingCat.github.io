@@ -693,7 +693,7 @@
         {
           "id": "futures_basis_5d",
           "type": "line",
-          "title": "主力 2609 (实线) + 季月 2612 (虚线) 近 5 日贴水(灰色区 -100~-240 区间无数据)",
+          "title": "主力 2609 (实线) 近 5 日贴水",
           "categories": [
             "08/28",
             "08/31",
@@ -705,7 +705,7 @@
           ],
           "series": [
             {
-              "name": "IF2609 (主力)",
+              "name": "IF2609 (主力·沪深300)",
               "data": [
                 -15.58,
                 -23.49,
@@ -718,7 +718,7 @@
               "lineStyle": "solid"
             },
             {
-              "name": "IC2609 (主力)",
+              "name": "IC2609 (主力·中证500)",
               "data": [
                 -41.65,
                 -56.3,
@@ -731,7 +731,7 @@
               "lineStyle": "solid"
             },
             {
-              "name": "IM2609 (主力)",
+              "name": "IM2609 (主力·中证1000)",
               "data": [
                 -32.2,
                 -39.27,
@@ -742,22 +742,33 @@
                 -35.36
               ],
               "lineStyle": "solid"
-            },
+            }
+          ],
+          "yLabel": "贴水 (点)",
+          "axisFormat": "{value}",
+          "tooltipFormat": "{b}: {c} 点",
+          "markLine": {
+            "data": [
+              { "yAxis": 0, "name": "0 平水线" }
+            ]
+          }
+        },
+        {
+          "id": "futures_basis_5d_2612",
+          "type": "line",
+          "title": "次主力 2612 季月(虚线)·左 Y 中证 / 右 Y 沪深",
+          "categories": [
+            "08/28",
+            "08/31",
+            "09/01",
+            "09/02",
+            "09/03",
+            "09/04",
+            "09/07"
+          ],
+          "series": [
             {
-              "name": "IF2612 (季月)",
-              "data": [
-                -92.5,
-                -93.2,
-                -92.24,
-                -98.16,
-                -98.98,
-                -97.88,
-                -100.82
-              ],
-              "lineStyle": "dashed"
-            },
-            {
-              "name": "IC2612 (季月)",
+              "name": "IC2612 (季月·中证500)",
               "data": [
                 -242.0,
                 -245.0,
@@ -767,10 +778,11 @@
                 -258.04,
                 -241.37
               ],
-              "lineStyle": "dashed"
+              "lineStyle": "dashed",
+              "yAxisIndex": 0
             },
             {
-              "name": "IM2612 (季月)",
+              "name": "IM2612 (季月·中证1000)",
               "data": [
                 -245.0,
                 -258.0,
@@ -780,35 +792,31 @@
                 -275.0,
                 -258.36
               ],
-              "lineStyle": "dashed"
+              "lineStyle": "dashed",
+              "yAxisIndex": 0
+            },
+            {
+              "name": "IF2612 (季月·沪深300)",
+              "data": [
+                -92.5,
+                -93.2,
+                -92.24,
+                -98.16,
+                -98.98,
+                -97.88,
+                -100.82
+              ],
+              "lineStyle": "dashed",
+              "yAxisIndex": 1
             }
           ],
-          "yLabel": "贴水 (点)",
+          "yLabelLeft": "中证贴水 (点)",
+          "yLabelRight": "沪深贴水 (点)",
           "axisFormat": "{value}",
           "tooltipFormat": "{b}: {c} 点",
-          "yAxisRange": [-300, 0],
           "markLine": {
             "data": [
               { "yAxis": 0, "name": "0 平水线" }
-            ]
-          },
-          "gapGraphic": {
-            "text": "— 区间无数据 (主力 2609 在 0~-70,IF2612 在 -90~-100,IC/IM2612 在 -240~-275) —"
-          },
-          "markArea": {
-            "itemStyle": { "color": "rgba(180,180,180,0.25)", "borderColor": "#aaa", "borderWidth": 1 },
-            "label": {
-              "show": true,
-              "position": "inside",
-              "formatter": "— 区间无数据 —",
-              "fontSize": 10,
-              "color": "#666"
-            },
-            "data": [
-              {
-                "yAxis": -100,
-                "yAxis2": -240
-              }
             ]
           }
         }

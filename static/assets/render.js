@@ -318,14 +318,14 @@
           },
           yAxis: hasDualY ? [
             // scale:true 让 ECharts 自动从数据实际范围开始,不再强制 0 起点
-            { type: 'value', position: 'left', scale: true, axisLabel: { fontSize: 10, formatter: axisFmt } },
-            { type: 'value', position: 'right', scale: true, axisLabel: { fontSize: 10, formatter: axisFmt }, splitLine: { show: false } }
+            { type: 'value', position: 'left', scale: true, axisLabel: { fontSize: 10, formatter: axisFmt },
+              name: chart.yLabelLeft || '', nameLocation: 'end', nameGap: 8, nameTextStyle: { fontSize: 10, color: '#6b7280' } },
+            { type: 'value', position: 'right', scale: true, axisLabel: { fontSize: 10, formatter: axisFmt }, splitLine: { show: false },
+              name: chart.yLabelRight || '', nameLocation: 'end', nameGap: 8, nameTextStyle: { fontSize: 10, color: '#6b7280' } }
           ] : {
             type: 'value',
             scale: true,
-            axisLabel: { fontSize: 10, formatter: axisFmt },
-            // 强制 yAxis min/max 让 markArea 正确渲染
-            ...(chart.yAxisRange ? { min: chart.yAxisRange[0], max: chart.yAxisRange[1] } : {})
+            axisLabel: { fontSize: 10, formatter: axisFmt }
           },
           // yAxis name 用 graphic 文本放 chart 容器右上角(yLabel 字符串),不跟 legend 重叠
           // (左上角在多 chart section 里会跟其他 chart 的 yAxis label 撞,右上角更安全)
@@ -337,20 +337,7 @@
               style: { text: chart.yLabel, fontSize: 10, fill: '#6b7280' }
             }]
           } : {}),
-          // gapGraphic: 文字"区间无数据"标在 chart 中央(空数据区)
-          ...(chart.gapGraphic ? {
-            graphic: [{
-              type: 'text',
-              left: 'center',
-              top: 'middle',
-              style: {
-                text: chart.gapGraphic.text,
-                fontSize: 11,
-                fill: '#aaa',
-                fontWeight: 'bold'
-              }
-            }]
-          } : {}),
+          // gapGraphic 撤回:用户改回 2 chart 拆分方案,不再用单图 + 中间文字
           series: series.map((s, idx) => ({
             name: s.name,
             type: 'line',
