@@ -283,6 +283,9 @@
     }
     #content > .load-error{grid-column:1 / -1;}
     #content > section.span-2{grid-column:1 / -1;}
+    /* Grid item 默认 min-width: auto,会被子内容撑开,导致 #content 横向滚动
+       强制 min-width: 0 让 section 收缩到 grid 列宽 */
+    #content > section{ min-width: 0; }
 
     /* Stack-pair: 两个 section 共享 1 col,内部 grid
        auto auto 让 row 高度 = 各自内容(不被拉伸),避免长内容溢出
