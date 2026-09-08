@@ -300,7 +300,7 @@
         }
         option = {
           tooltip: tooltipOpt,
-          // legend 顶部,统一紧凑排(itemWidth 20 + itemGap 6 让 line 短,右侧留位给 yAxis name)
+          // legend 顶部,统一紧凑排(图例尽量高,放在 chart 最顶部 1-2 行)
           legend: {
             top: 0,
             textStyle: { fontSize: 11 },
@@ -309,35 +309,34 @@
             itemWidth: 20,
             data: series.map(s => s.name)
           },
-          grid: { left: 50, right: hasDualY ? 60 : 24, top: gridTop, bottom: 24 },
+          // grid.top 给 legend 留位(1 行 18 / 5+ series 2 行 36)
+          grid: { left: 70, right: hasDualY ? 70 : 24, top: gridTop, bottom: 24 },
           xAxis: {
             type: 'category',
             data: chart.categories || [],
             boundaryGap: false,
             axisLabel: { fontSize: 10 }
           },
+          // yAxis name:左侧 + 旋转 90 度垂直显示(垂直在 yAxis 中间)
+          // 单 Y:chart.yLabel,双 Y:chart.yLabelLeft / yLabelRight
           yAxis: hasDualY ? [
             // scale:true 让 ECharts 自动从数据实际范围开始,不再强制 0 起点
             { type: 'value', position: 'left', scale: true, axisLabel: { fontSize: 10, formatter: axisFmt },
-              name: chart.yLabelLeft || '', nameLocation: 'end', nameGap: 8, nameTextStyle: { fontSize: 10, color: '#6b7280' } },
+              name: chart.yLabelLeft || '', nameLocation: 'middle', nameGap: 30, nameRotate: 90,
+              nameTextStyle: { fontSize: 10, color: '#6b7280' } },
             { type: 'value', position: 'right', scale: true, axisLabel: { fontSize: 10, formatter: axisFmt }, splitLine: { show: false },
-              name: chart.yLabelRight || '', nameLocation: 'end', nameGap: 8, nameTextStyle: { fontSize: 10, color: '#6b7280' } }
+              name: chart.yLabelRight || '', nameLocation: 'middle', nameGap: 25, nameRotate: 90,
+              nameTextStyle: { fontSize: 10, color: '#6b7280' } }
           ] : {
             type: 'value',
             scale: true,
-            axisLabel: { fontSize: 10, formatter: axisFmt }
+            axisLabel: { fontSize: 10, formatter: axisFmt },
+            // yAxis name:左侧 + 旋转 90 度垂直(垂直在 yAxis 中间)
+            ...(chart.yLabel ? {
+              name: chart.yLabel, nameLocation: 'middle', nameGap: 30, nameRotate: 90,
+              nameTextStyle: { fontSize: 10, color: '#6b7280' }
+            } : {})
           },
-          // yAxis name 用 graphic 文本放 chart 容器右上角(yLabel 字符串),不跟 legend 重叠
-          // (左上角在多 chart section 里会跟其他 chart 的 yAxis label 撞,右上角更安全)
-          ...(chart.yLabel && !hasDualY ? {
-            graphic: [{
-              type: 'text',
-              right: 8,
-              top: 6,
-              style: { text: chart.yLabel, fontSize: 10, fill: '#6b7280' }
-            }]
-          } : {}),
-          // gapGraphic 撤回:用户改回 2 chart 拆分方案,不再用单图 + 中间文字
           series: series.map((s, idx) => ({
             name: s.name,
             type: 'line',
