@@ -323,7 +323,9 @@
           ] : {
             type: 'value',
             scale: true,
-            axisLabel: { fontSize: 10, formatter: axisFmt }
+            axisLabel: { fontSize: 10, formatter: axisFmt },
+            // 强制 yAxis min/max 让 markArea 正确渲染
+            ...(chart.yAxisRange ? { min: chart.yAxisRange[0], max: chart.yAxisRange[1] } : {})
           },
           // yAxis name 用 graphic 文本放 chart 容器右上角(yLabel 字符串),不跟 legend 重叠
           // (左上角在多 chart section 里会跟其他 chart 的 yAxis label 撞,右上角更安全)
@@ -335,7 +337,21 @@
               style: { text: chart.yLabel, fontSize: 10, fill: '#6b7280' }
             }]
           } : {}),
-          series: series.map(s => ({
+          // gapGraphic: 文字"区间无数据"标在 chart 中央(空数据区)
+          ...(chart.gapGraphic ? {
+            graphic: [{
+              type: 'text',
+              left: 'center',
+              top: 'middle',
+              style: {
+                text: chart.gapGraphic.text,
+                fontSize: 11,
+                fill: '#aaa',
+                fontWeight: 'bold'
+              }
+            }]
+          } : {}),
+          series: series.map((s, idx) => ({
             name: s.name,
             type: 'line',
             data: s.data,

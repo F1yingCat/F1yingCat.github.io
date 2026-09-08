@@ -693,6 +693,7 @@
         {
           "id": "futures_basis_5d",
           "type": "line",
+          "title": "主力 2609 (实线) + 季月 2612 (虚线) 近 5 日贴水(灰色区 -100~-240 区间无数据)",
           "categories": [
             "08/28",
             "08/31",
@@ -741,36 +742,9 @@
                 -35.36
               ],
               "lineStyle": "solid"
-            }
-          ],
-          "yLabel": "贴水 (点)",
-          "axisFormat": "{value}",
-          "tooltipFormat": "{b}: {c} 点",
-          "markLine": {
-            "data": [
-              {
-                "yAxis": 0,
-                "name": "0 平水线"
-              }
-            ]
-          }
-        },
-        {
-          "id": "futures_basis_5d_2612_if",
-          "type": "line",
-          "title": "次主力 2612·IF(沪深300 季月)",
-          "categories": [
-            "08/28",
-            "08/31",
-            "09/01",
-            "09/02",
-            "09/03",
-            "09/04",
-            "09/07"
-          ],
-          "series": [
+            },
             {
-              "name": "IF2612 (季月次主力)",
+              "name": "IF2612 (季月)",
               "data": [
                 -92.5,
                 -93.2,
@@ -781,36 +755,9 @@
                 -100.82
               ],
               "lineStyle": "dashed"
-            }
-          ],
-          "yLabel": "贴水 (点)",
-          "axisFormat": "{value}",
-          "tooltipFormat": "{b}: {c} 点",
-          "markLine": {
-            "data": [
-              {
-                "yAxis": 0,
-                "name": "0 平水线"
-              }
-            ]
-          }
-        },
-        {
-          "id": "futures_basis_5d_2612_ic_im",
-          "type": "line",
-          "title": "次主力 2612·IC 中证500 + IM 中证1000 季月(数值相近,共用 y 轴)",
-          "categories": [
-            "08/28",
-            "08/31",
-            "09/01",
-            "09/02",
-            "09/03",
-            "09/04",
-            "09/07"
-          ],
-          "series": [
+            },
             {
-              "name": "IC2612 (季月次主力)",
+              "name": "IC2612 (季月)",
               "data": [
                 -242.0,
                 -245.0,
@@ -823,7 +770,7 @@
               "lineStyle": "dashed"
             },
             {
-              "name": "IM2612 (季月次主力)",
+              "name": "IM2612 (季月)",
               "data": [
                 -245.0,
                 -258.0,
@@ -839,11 +786,28 @@
           "yLabel": "贴水 (点)",
           "axisFormat": "{value}",
           "tooltipFormat": "{b}: {c} 点",
+          "yAxisRange": [-300, 0],
           "markLine": {
             "data": [
+              { "yAxis": 0, "name": "0 平水线" }
+            ]
+          },
+          "gapGraphic": {
+            "text": "— 区间无数据 (主力 2609 在 0~-70,IF2612 在 -90~-100,IC/IM2612 在 -240~-275) —"
+          },
+          "markArea": {
+            "itemStyle": { "color": "rgba(180,180,180,0.25)", "borderColor": "#aaa", "borderWidth": 1 },
+            "label": {
+              "show": true,
+              "position": "inside",
+              "formatter": "— 区间无数据 —",
+              "fontSize": 10,
+              "color": "#666"
+            },
+            "data": [
               {
-                "yAxis": 0,
-                "name": "0 平水线"
+                "yAxis": -100,
+                "yAxis2": -240
               }
             ]
           }
