@@ -560,11 +560,16 @@
     }
     // 先显示 + 限高,再量真实高度 — 避免 body 还在 hidden 时 scrollHeight=0
     body.style.maxWidth = '520px';
-    body.style.maxHeight = '480px';
     body.hidden = false;
     const rect = trigger.getBoundingClientRect();
-    const popH = body.offsetHeight;  // 真实高度(已 layout)
     const margin = 8;
+    // 动态 max-height:viewport 减去 trigger 上下方空间,留 16px 边距
+    const spaceAbove = rect.top - margin;
+    const spaceBelow = window.innerHeight - rect.bottom - margin;
+    // 默认放 trigger 上方,如果上方空间小则放下方;最终取较大一边 -16px
+    const maxH = Math.max(120, Math.max(spaceAbove, spaceBelow) - 16);
+    body.style.maxHeight = maxH + 'px';
+    const popH = body.offsetHeight;  // 真实高度(已 layout)
     // 默认在 trigger **上方**,浮窗底部紧贴 trigger 顶部(gap 0)
     let top = rect.top - popH;
     if (top < margin) {

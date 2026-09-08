@@ -209,10 +209,16 @@
     position:fixed; z-index:99999;
     background:var(--bg); border:1px solid var(--line); border-radius:10px;
     padding:12px 14px; min-width:280px; max-width:520px;
+    /* 限高 + 内部 scroll,避免长 popover 溢出屏幕(默认 60vh,
+       JS 动态根据 trigger 位置调成 viewport 剩余空间) */
+    max-height:60vh; overflow-y:auto; overflow-wrap:break-word;
     font-size:12.5px; line-height:1.65; color:var(--sub);
     box-shadow:0 8px 28px rgba(0,0,0,0.14), 0 2px 6px rgba(0,0,0,0.06);
-    overflow-wrap:break-word;
+    /* scrollbar 美化 */
+    scrollbar-width:thin; scrollbar-color:#cbd5e1 transparent;
   }
+  .popover-body::-webkit-scrollbar{ width:6px; }
+  .popover-body::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:3px; }
   [data-theme="dark"] .popover-body{ background:#0f1420; box-shadow:0 8px 28px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.3); }
   .popover-body[hidden]{ display:none; }
   .popover-body b{ color:var(--ink); font-weight:600; }
