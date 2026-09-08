@@ -68,9 +68,10 @@
     border-radius:10px;
     /* 浮窗最大宽度 = 视口 - 左右各 12px 边距,避免文字溢出到屏幕外 */
     max-width:calc(100vw - 24px);
+    min-width:0;  /* 防止 flex/grid 撑大 */
   }
-  .floating-tabs{ top:12px; left:12px; padding:3px; display:none; max-width:min(calc(100vw - 24px), 360px); }
-  .floating-meta{ top:12px; right:12px; padding:5px 9px; display:none; gap:6px; align-items:center; font-size:11.5px; color:var(--sub); }
+  .floating-tabs{ top:12px; left:12px; padding:3px; display:none; max-width:min(calc(100vw - 24px), 360px); overflow:hidden; }
+  .floating-meta{ top:12px; right:12px; padding:5px 9px; display:none; gap:6px; align-items:center; font-size:11.5px; color:var(--sub); overflow:hidden; }
   .floating-meta .updated{ font-variant-numeric: tabular-nums; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .floating-tabs button{
     border:none; background:transparent;
@@ -246,6 +247,12 @@
     .table-wrap table{ font-size:12.5px; }
     .table-wrap th, .table-wrap td{ padding:5px 6px; }
     .table-wrap thead th{ padding:6px 6px; font-size:11.5px; }
+    /* 移动端 header summary 摘要限制 5 行,避免 banner 撑高页面 */
+    header.top p{
+      -webkit-line-clamp:5; line-clamp:5; -webkit-box-orient:vertical;
+      display:-webkit-box; overflow:hidden;
+      max-height:8em;  /* 兜底 max-height (5 行 × 1.6 line-height) */
+    }
   }
 
   /* =================================================== */
