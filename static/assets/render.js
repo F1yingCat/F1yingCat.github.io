@@ -287,6 +287,8 @@
       } else if (chart.type === 'line') {
         const series = chart.series || [];
         const hasDualY = series.length > 1 && series.some(s => s.yAxisIndex === 1);
+        // 5+ series 时图例会换两行,grid.top 需预留 50px(单行图例 32px 够)
+        const gridTop = series.length >= 5 ? 50 : 32;
         const tooltipOpt = { trigger: 'axis' };
         if (typeof chart.tooltipFormatter === 'string') {
           try {
@@ -300,9 +302,12 @@
           legend: {
             top: 0,
             textStyle: { fontSize: 11 },
+            // 5+ series 紧凑排,减少换行概率
+            itemGap: series.length >= 5 ? 4 : 10,
+            itemWidth: series.length >= 5 ? 14 : 25,
             data: series.map(s => s.name)
           },
-          grid: { left: 50, right: hasDualY ? 60 : 24, top: 32, bottom: 24 },
+          grid: { left: 50, right: hasDualY ? 60 : 24, top: gridTop, bottom: 24 },
           xAxis: {
             type: 'category',
             data: chart.categories || [],
