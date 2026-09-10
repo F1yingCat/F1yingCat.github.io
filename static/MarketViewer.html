@@ -161,6 +161,14 @@
     white-space:normal; word-break:break-all;
     max-width: 260px;          /* 列内容宽,长文字强制换行 */
   }
+  /* 短 wrap 列(事件等):更窄 max-width,让长文字多换几行 */
+  .table-wrap td.wrap-tight, .table-wrap th.wrap-tight{
+    white-space:normal; word-break:break-all;
+    max-width: 200px;
+  }
+  /* section.text-left:整张表全部贴左(标题 + 内容) */
+  section.text-left .table-wrap th,
+  section.text-left .table-wrap td{ text-align:left; }
   /* 合约名次行(代码加粗 + 名字常规) */
   .table-wrap .contract-name{ font-size:11px; color:var(--sub); }
   /* 不强制 min-width,让 grid 1fr 生效(否则表格会撑开 section 卡片) */

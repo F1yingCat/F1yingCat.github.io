@@ -885,12 +885,12 @@
       "columns": [
         {
           "text": "事件",
-          "className": "wrap"
+          "className": "wrap-tight"
         },
         "时间",
         {
           "text": "影响",
-          "className": "wrap"
+          "className": "wrap-tight"
         },
         "关注度"
       ],
