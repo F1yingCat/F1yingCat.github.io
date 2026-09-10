@@ -161,17 +161,36 @@
 
   // 通用 tag-row 渲染:每个 tag 加 class="tag tag-pop" + data-tag-idx
   // 点击触发 popover 显示全文
+  // 防御性自动截断:tag 数量 > 8 只取前 8(超长降级);tag 文字 > 80 字符保留前 80
+  // 让 Mavis 即使生成超长数据也不会撑坏页面
+  const MAX_TAGS = 8;
+  const MAX_TAG_LEN = 80;
   function renderTagsRow(tags) {
     if (!tags || !tags.length) return '';
-    return '<div class="tags-row">' + tags.map((t, i) =>
-      `<span class="tag tag-pop" data-tag-idx="${i}">${esc(t)}</span>` +
-      `<div class="popover-body tag-popover" data-tag-idx="${i}" hidden>${esc(t)}</div>`
-    ).join('') + '</div>';
+    const limited = tags.slice(0, MAX_TAGS);
+    return '<div class="tags-row">' + limited.map((t, i) => {
+      const tagText = t.length > MAX_TAG_LEN ? t.slice(0, MAX_TAG_LEN) + '…' : t;
+      const fullText = t;  // popover 仍显示完整原文
+      return `<span class="tag tag-pop" data-tag-idx="${i}">${esc(tagText)}</span>` +
+        `<div class="popover-body tag-popover" data-tag-idx="${i}" hidden>${esc(fullText)}</div>`;
+    }).join('') + '</div>';
   }
 
   function renderHeader(h) {
     if (!h) return '';
-    const summaryHtml = (h.summary || '')
+    // summary 限 500 字(防御 Mavis 生成超长 summary 撑高 header)
+    // 超出部分用 ellipsis 截断(<b> 标签不计入字数计算)
+    const summaryRaw = h.summary || '';
+    const summaryPlain = summaryRaw.replace(/<\/?b>/g, '');  // 去标签数纯字数
+    const MAX_SUMMARY = 500;
+    let summaryDisplay = summaryRaw;
+    if (summaryPlain.length > MAX_SUMMARY) {
+      // 找最接近 500 字的边界(句号/分号),保持语义完整
+      const cutAt = summaryPlain.lastIndexOf('。', MAX_SUMMARY);
+      const end = cutAt > 100 ? cutAt + 1 : MAX_SUMMARY;
+      summaryDisplay = summaryPlain.slice(0, end) + '…';
+    }
+    const summaryHtml = summaryDisplay
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
     return renderTagsRow(h.tags) +
