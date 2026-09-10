@@ -148,10 +148,12 @@
     return '<div class="kpi-row">' +
       kpis.map(k => {
         const dir = k.dir ? ` ${esc(k.dir)}` : '';
+        // chg 支持 inline <b> 标签加粗(数据源可信,跟 summary 处理一致)
+        const chgHtml = esc(k.chg).replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
         return `<div class="kpi">
           <div class="lbl">${esc(k.label)}</div>
           <div class="val">${esc(k.value)}</div>
-          <div class="chg${dir}">${esc(k.chg)}</div>
+          <div class="chg${dir}">${chgHtml}</div>
         </div>`;
       }).join('') +
       '</div>';
