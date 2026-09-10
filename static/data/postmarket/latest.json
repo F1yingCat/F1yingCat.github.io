@@ -534,11 +534,11 @@
             {
               "name": "北向成交 (亿)",
               "data": [
-                null,
-                null,
-                null,
-                null,
-                null
+                2741.64,
+                2713.9,
+                2660.48,
+                2460.86,
+                2236.91
               ],
               "yAxisIndex": 0,
               "lineStyle": "solid"
