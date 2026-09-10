@@ -98,36 +98,50 @@
    *   {type:"source", fallback:true, text:"📡"}  // 兜底来源
    *   {type:"html", html:"<b>...</b>"}     // 原始 HTML（谨慎使用）
    */
-  function renderCell(c) {
+  // column className 自动应用到该列所有 cell(包括纯字符串)
+  // 例:columns[0]={text:'标的',className:'wrap'} → 第 0 列所有 td 都有 'wrap' 类
+  function getColumnClassName(columns, colIndex) {
+    const col = columns && columns[colIndex];
+    return (col && typeof col === 'object' && col.className) ? col.className : '';
+  }
+
+  function renderCell(c, colIndex, columns) {
     if (c == null) return '<td></td>';
-    if (typeof c === 'string') return `<td>${esc(c)}</td>`;
+    const colCls = getColumnClassName(columns, colIndex);
+
+    if (typeof c === 'string') {
+      // 纯字符串:td 加 colCls(让列 className 自动应用)
+      return colCls ? `<td class="${esc(colCls)}">${esc(c)}</td>` : `<td>${esc(c)}</td>`;
+    }
     if (typeof c !== 'object') return `<td>${esc(c)}</td>`;
 
     const extraCls = c.className ? ' ' + esc(c.className) : '';
+    const finalCls = colCls + extraCls;
 
     if (c.type === 'code') {
       const codeCls = c.className || 'col-code';
-      return `<td class="code ${esc(codeCls)}">${esc(c.text)}</td>`;
+      const merged = colCls ? `${esc(codeCls)} ${esc(colCls)}` : esc(codeCls);
+      return `<td class="code ${merged}">${esc(c.text)}</td>`;
     }
     if (c.type === 'pill') {
-      return `<td><span class="pill ${esc(c.level || 'near')}">${esc(c.text)}</span></td>`;
+      return `<td${colCls ? ' class="'+esc(colCls)+'"' : ''}><span class="pill ${esc(c.level || 'near')}">${esc(c.text)}</span></td>`;
     }
     if (c.type === 'source' || (c.fallback !== undefined && c.text === undefined)) {
       if (c.fallback) {
-        return `<td><span class="srcfallback">${esc(c.text || '📡')}</span></td>`;
+        return `<td${colCls ? ' class="'+esc(colCls)+'"' : ''}><span class="srcfallback">${esc(c.text || '📡')}</span></td>`;
       }
-      return `<td><span class="source-ok">${esc(c.text || '聚源')}</span></td>`;
+      return `<td${colCls ? ' class="'+esc(colCls)+'"' : ''}><span class="source-ok">${esc(c.text || '聚源')}</span></td>`;
     }
     if (c.type === 'html') {
-      return `<td>${c.html || ''}</td>`;
+      return `<td${colCls ? ' class="'+esc(colCls)+'"' : ''}>${c.html || ''}</td>`;
     }
     const dir = c.dir ? esc(c.dir) : '';
-    const classes = [dir, (c.className || '').trim()].filter(Boolean).join(' ');
+    const classes = [dir, finalCls.trim()].filter(Boolean).join(' ');
     return classes ? `<td class="${classes}">${esc(c.text || '')}</td>` : `<td>${esc(c.text || '')}</td>`;
   }
 
-  function renderRow(row) {
-    return '<tr>' + row.map(renderCell).join('') + '</tr>';
+  function renderRow(row, columns) {
+    return '<tr>' + row.map((c, i) => renderCell(c, i, columns)).join('') + '</tr>';
   }
 
   function renderTable(columns, rows) {
@@ -138,7 +152,7 @@
         return `<th${cls}>${esc(text)}</th>`;
       }).join('') +
       '</tr></thead>';
-    const tbody = '<tbody>' + rows.map(renderRow).join('') + '</tbody>';
+    const tbody = '<tbody>' + rows.map(r => renderRow(r, columns)).join('') + '</tbody>';
     // 包一层 .table-wrap,移动端列多时横向滚动
     return `<div class="table-wrap"><table>${thead}${tbody}</table></div>`;
   }
