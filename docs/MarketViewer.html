@@ -244,10 +244,10 @@
   .kpi .lbl{font-size:13px;color:var(--sub);line-height:1.3;}
   .kpi .val{font-size:20px;font-weight:700;margin-top:2px;letter-spacing:-.01em;}
   .kpi .chg{font-size:13px;line-height:1.4;
-    /* chg 文字推到底部对齐,line-clamp 2 截断(所有 row 等高) */
-    margin-top:auto; padding-top:6px;
-    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+    /* chg 文字限 3 行(短 1 行 / 中 2 行 / 长 3 行),避免卡片被超长 chg 撑大 */
+    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;
     overflow:hidden; text-overflow:ellipsis;
+    margin-top:1px;
   }
 
   footer{font-size:13px;color:var(--sub);text-align:center;padding:10px;}
