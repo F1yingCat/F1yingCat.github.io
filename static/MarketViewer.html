@@ -155,8 +155,12 @@
   .table-wrap table{ min-width: max-content; }
   .table-wrap td{ white-space:nowrap; }
   .table-wrap th{ white-space:nowrap; }  /* 表头也 nowrap */
-  /* 标记 wrap class 的列允许换行(用于标的 / 合约代码+名字 / 事件 等长文本) */
-  .table-wrap td.wrap, .table-wrap th.wrap{ white-space:normal; }
+  /* 标记 wrap class 的列允许换行(用于标的 / 合约代码+名字 / 事件 等长文本)
+     max-width 限制 + word-break 让长文字真换行(避免单行装下就不换) */
+  .table-wrap td.wrap, .table-wrap th.wrap{
+    white-space:normal; word-break:break-all;
+    max-width: 260px;          /* 列内容宽,长文字强制换行 */
+  }
   /* 合约名次行(代码加粗 + 名字常规) */
   .table-wrap .contract-name{ font-size:11px; color:var(--sub); }
   /* 不强制 min-width,让 grid 1fr 生效(否则表格会撑开 section 卡片) */
