@@ -151,6 +151,10 @@
 
   /* ===== Tables ===== */
   .table-wrap{ width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  /* td/th 不换行,表格按内容自然变宽,table-wrap 横向 scroll */
+  .table-wrap table{ min-width: max-content; }
+  .table-wrap td{ white-space:nowrap; }
+  .table-wrap th{ white-space:nowrap; }  /* 表头也 nowrap */
   /* 不强制 min-width,让 grid 1fr 生效(否则表格会撑开 section 卡片) */
   table{width:100%;border-collapse:collapse;font-size:14.5px;border-spacing:0;
     table-layout:auto;}
