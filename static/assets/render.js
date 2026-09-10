@@ -111,7 +111,15 @@
 
     if (typeof c === 'string') {
       // 纯字符串:td 加 colCls(让列 className 自动应用)
-      return colCls ? `<td class="${esc(colCls)}">${esc(c)}</td>` : `<td>${esc(c)}</td>`;
+      // wrap 列:在"中文名 跟 英文/数字"边界自动换行(让 "美元指数 DXY (9/9 收盘)" → 两行)
+      let cellHtml = esc(c);
+      if (colCls === 'wrap') {
+        // 在第一个"中文 + 空格 + 英文/数字/括号"边界插入 <br>
+        cellHtml = cellHtml.replace(/^([\u4e00-\u9fff·、]+) ([A-Za-z0-9(\s].*)$/, '$1<br>$2');
+        // 处理 \n 显式换行(AI 数据可写 \n 强制换行)
+        cellHtml = cellHtml.replace(/\n/g, '<br>');
+      }
+      return colCls ? `<td class="${esc(colCls)}">${cellHtml}</td>` : `<td>${cellHtml}</td>`;
     }
     if (typeof c !== 'object') return `<td>${esc(c)}</td>`;
 
