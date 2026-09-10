@@ -301,7 +301,7 @@
       "columns": [
         {
           "text": "标的",
-          "className": "wrap"
+          "className": "wrap split"
         },
         "最新价",
         "涨跌",
