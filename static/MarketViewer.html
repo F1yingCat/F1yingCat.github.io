@@ -237,7 +237,9 @@
   .kpi{
     background:#f8fafc; border:1px solid var(--line); border-radius:8px;
     padding:10px 13px; transition:all .15s;
-    display:flex; flex-direction:column;  /* chg 推到底部对齐,卡片等高 */
+    display:flex; flex-direction:column;  /* chg 推到底部对齐 */
+    /* min-height 统一所有 kpi 卡片高度,短 chg 留底部空白跟长 chg 卡片对齐 */
+    min-height:118px;
   }
   [data-theme="dark"] .kpi{background:#0f1420;}
   .kpi:hover{border-color:var(--accent); transform:translateY(-1px);}
