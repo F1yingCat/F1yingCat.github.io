@@ -154,9 +154,9 @@
   function renderTable(columns, rows) {
     const thead = '<thead><tr>' +
       columns.map(c => {
-        const cls = (typeof c === 'object' && c.className) ? ` class="${esc(c.className)}"` : '';
+        // 表头不继承任何 class(包括 wrap / split)— 保持默认 nowrap + 标准 padding
         const text = (typeof c === 'object') ? c.text : c;
-        return `<th${cls}>${esc(text)}</th>`;
+        return `<th>${esc(text)}</th>`;
       }).join('') +
       '</tr></thead>';
     const tbody = '<tbody>' + rows.map(r => renderRow(r, columns)).join('') + '</tbody>';
