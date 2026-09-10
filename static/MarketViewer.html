@@ -240,6 +240,8 @@
     display:flex; flex-direction:column;  /* chg 推到底部对齐 */
     /* min-height 统一所有 kpi 卡片高度,短 chg 留底部空白跟长 chg 卡片对齐 */
     min-height:118px;
+    /* min-width: 0 让 grid 1fr 精确控制列宽(否则 chg 长文字撑开单列) */
+    min-width:0;
   }
   [data-theme="dark"] .kpi{background:#0f1420;}
   .kpi:hover{border-color:var(--accent); transform:translateY(-1px);}
