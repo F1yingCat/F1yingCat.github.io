@@ -130,6 +130,10 @@
   .tag{display:inline-block;background:rgba(255,255,255,.18);border-radius:5px;padding:2px 8px;font-size:12.5px;white-space:nowrap;}
   .tag-pop{cursor:pointer;transition:background .15s;}
   .tag-pop:hover{background:rgba(255,255,255,.32);}
+  /* section 内的 tag-row:统一大小、完整显示、换行(白底深字) */
+  section .tags-row{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 8px;align-items:flex-start;}
+  section .tag{white-space:normal;line-height:1.35;max-width:100%;
+    background:var(--accent-soft);color:var(--accent);}
 
   /* ===== Sections ===== */
   section{

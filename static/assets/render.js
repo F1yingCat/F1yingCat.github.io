@@ -157,19 +157,23 @@
       '</div>';
   }
 
+  // 通用 tag-row 渲染:每个 tag 加 class="tag tag-pop" + data-tag-idx
+  // 点击触发 popover 显示全文
+  function renderTagsRow(tags) {
+    if (!tags || !tags.length) return '';
+    return '<div class="tags-row">' + tags.map((t, i) =>
+      `<span class="tag tag-pop" data-tag-idx="${i}">${esc(t)}</span>` +
+      `<div class="popover-body tag-popover" data-tag-idx="${i}" hidden>${esc(t)}</div>`
+    ).join('') + '</div>';
+  }
+
   function renderHeader(h) {
     if (!h) return '';
-    // tag 加 class="tag tag-pop" + data-fulltext,点击触发 popover 显示全文
-    const tags = (h.tags || []).map((t, i) =>
-      `<span class="tag tag-pop" data-tag-idx="${i}">${esc(t)}</span>` +
-      // 隐藏的 popover body(全局唯一,显示当前 click 的 tag 全文)
-      `<div class="popover-body tag-popover" data-tag-idx="${i}" hidden>${esc(t)}</div>`
-    ).join('');
     const summaryHtml = (h.summary || '')
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
-    return `<div class="tags-row">${tags}</div>
-      <h1>${esc(h.title || '')}</h1>
+    return renderTagsRow(h.tags) +
+      `<h1>${esc(h.title || '')}</h1>
       <p>${summaryHtml}</p>`;
   }
 
@@ -403,6 +407,7 @@
 
     return `<section${clsAttr} id="sec-${esc(s.id || '')}">
       <h2><span class="bar"></span>${esc(s.title || '')}</h2>
+      ${renderTagsRow(s.tags)}
       ${body}
     </section>`;
   }
