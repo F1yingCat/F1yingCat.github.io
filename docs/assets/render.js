@@ -296,19 +296,48 @@
       let option;
       const axisFmt = chart.axisFormat || '{value}';
       if (chart.type === 'bar-h') {
-        // bar-h: 0 紧贴 yAxis 右侧,bar 向左延伸 → grid.right = 0 让柱子贴图最右不留空
-        // 强制 xAxis max = 0,0 永远在 yAxis 紧贴,bar 整体在图左半
-        const xMax = chart.xMax !== undefined ? chart.xMax : 0;
+        // bar-h: 0 紧贴图最左(常规柱状图布局,bar 都从 0 向右)
+        // 如果数据全负:用绝对值显示,bar label 仍按原值(负)显示
+        const rawValues = data.map(d => (typeof d === 'object' ? d.value : d));
+        const isAllNeg = rawValues.length > 0 && rawValues.every(v => v <= 0);
+        let plotData = data;
+        let xMin = 0, xMax = 'dataMax';
+        let labelFmt = axisFmt;
+        if (isAllNeg) {
+          // 绝对值化,0 贴最左,bar 整体在图右
+          const absMax = Math.max(...rawValues.map(v => Math.abs(v))) * 1.1 || 1;
+          xMax = absMax;
+          plotData = data.map((d, i) => {
+            const v = typeof d === 'object' ? d.value : d;
+            const base = typeof d === 'object' ? d : { value: v };
+            return { ...base, value: Math.abs(v), _origValue: v };
+          });
+          // bar 内 label 显示原值(负)+%(ECharts bar label formatter 第 1 个参数是 params 对象)
+          labelFmt = (params) => {
+            const idx = params && params.dataIndex;
+            const orig = (idx !== undefined ? plotData[idx] : plotData[0])?._origValue;
+            return orig !== undefined ? `${orig}%` : `${params?.value ?? ''}%`;
+          };
+        }
         option = {
-          tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: chart.tooltipFormat || '{b}: {c}' },
-          grid: { left: 84, right: 0, top: 14, bottom: 20 },
-          xAxis: { type: 'value', max: xMax, axisLabel: { formatter: axisFmt } },
+          tooltip: {
+            trigger: 'axis', axisPointer: { type: 'shadow' },
+            formatter: (params) => {
+              if (!params || !params.length) return '';
+              const p = params[0];
+              const orig = p.data && p.data._origValue !== undefined ? p.data._origValue : p.value;
+              return `${p.name}: ${orig}%`;
+            }
+          },
+          grid: { left: 84, right: 16, top: 14, bottom: 20 },
+          xAxis: { type: 'value', min: xMin, max: xMax, axisLabel: { formatter: axisFmt } },
           // inverse: true 让 yAxis 从上到下排,跟表格行序一致
           yAxis: { type: 'category', data: chart.categories || [], inverse: true },
           series: [{
-            type: 'bar', data,
+            type: 'bar', data: plotData,
             label: chart.showLabel !== false ? {
-              show: true, position: 'inside', formatter: '{c}%', fontSize: 10, color: '#fff'
+              show: true, position: 'right', distance: 4,
+              formatter: labelFmt, fontSize: 10, color: '#1f2937'
             } : undefined
           }]
         };
