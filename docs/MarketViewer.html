@@ -156,15 +156,18 @@
   .table-wrap td{ white-space:nowrap; }
   .table-wrap th{ white-space:nowrap; }  /* 表头也 nowrap */
   /* 标记 wrap class 的列允许换行(用于标的 / 合约代码+名字 / 事件 等长文本)
-     max-width 限制 + word-break 让长文字真换行(避免单行装下就不换) */
+     max-width 限制 + word-break 让长文字真换行(避免单行装下就不换)
+     vertical-align: top 让短内容贴顶,不被 row stretch 居中显出"空行" */
   .table-wrap td.wrap, .table-wrap th.wrap{
     white-space:normal; word-break:break-all;
     max-width: 260px;          /* 列内容宽,长文字强制换行 */
+    vertical-align: top;
   }
   /* 短 wrap 列(事件等):更窄 max-width,让长文字多换几行 */
   .table-wrap td.wrap-tight, .table-wrap th.wrap-tight{
     white-space:normal; word-break:break-all;
     max-width: 200px;
+    vertical-align: top;
   }
   /* section.text-left:整张表全部贴左(标题 + 内容) */
   section.text-left .table-wrap th,
@@ -183,7 +186,7 @@
   [data-theme="dark"] thead th{background:#0f1420; color:#9aa6b8;}
   thead th:first-child, thead th.text-left{ text-align:left; }
   th,td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--line-soft);
-    vertical-align:middle;}
+    vertical-align:top;}    /* 顶部对齐,wrap 列短内容跟数字列同行不偏移 */
   th:first-child,td:first-child{text-align:left;}
   tbody tr:nth-child(even){ background:rgba(0,0,0,.012); }
   [data-theme="dark"] tbody tr:nth-child(even){ background:rgba(255,255,255,.018); }
