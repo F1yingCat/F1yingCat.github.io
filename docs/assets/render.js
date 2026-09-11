@@ -296,13 +296,21 @@
       let option;
       const axisFmt = chart.axisFormat || '{value}';
       if (chart.type === 'bar-h') {
+        // bar-h: 0 紧贴 yAxis 右侧,bar 向左延伸 → grid.right = 0 让柱子贴图最右不留空
+        // 强制 xAxis max = 0,0 永远在 yAxis 紧贴,bar 整体在图左半
+        const xMax = chart.xMax !== undefined ? chart.xMax : 0;
         option = {
           tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: chart.tooltipFormat || '{b}: {c}' },
-          grid: { left: 84, right: 24, top: 14, bottom: 20 },
-          xAxis: { type: 'value', axisLabel: { formatter: axisFmt } },
+          grid: { left: 84, right: 0, top: 14, bottom: 20 },
+          xAxis: { type: 'value', max: xMax, axisLabel: { formatter: axisFmt } },
           // inverse: true 让 yAxis 从上到下排,跟表格行序一致
           yAxis: { type: 'category', data: chart.categories || [], inverse: true },
-          series: [{ type: 'bar', data }]
+          series: [{
+            type: 'bar', data,
+            label: chart.showLabel !== false ? {
+              show: true, position: 'inside', formatter: '{c}%', fontSize: 10, color: '#fff'
+            } : undefined
+          }]
         };
       } else if (chart.type === 'bar') {
         option = {
