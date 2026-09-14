@@ -296,48 +296,30 @@
       let option;
       const axisFmt = chart.axisFormat || '{value}';
       if (chart.type === 'bar-h') {
-        // bar-h: 0 紧贴图最左(常规柱状图布局,bar 都从 0 向右)
-        // 如果数据全负:用绝对值显示,bar label 仍按原值(负)显示
-        const rawValues = data.map(d => (typeof d === 'object' ? d.value : d));
-        const isAllNeg = rawValues.length > 0 && rawValues.every(v => v <= 0);
-        let plotData = data;
-        let xMin = 0, xMax = 'dataMax';
-        let labelFmt = axisFmt;
-        if (isAllNeg) {
-          // 绝对值化,0 贴最左,bar 整体在图右
-          const absMax = Math.max(...rawValues.map(v => Math.abs(v))) * 1.1 || 1;
-          xMax = absMax;
-          plotData = data.map((d, i) => {
-            const v = typeof d === 'object' ? d.value : d;
-            const base = typeof d === 'object' ? d : { value: v };
-            return { ...base, value: Math.abs(v), _origValue: v };
-          });
-          // bar 内 label 显示原值(负)+%(ECharts bar label formatter 第 1 个参数是 params 对象)
-          labelFmt = (params) => {
-            const idx = params && params.dataIndex;
-            const orig = (idx !== undefined ? plotData[idx] : plotData[0])?._origValue;
-            return orig !== undefined ? `${orig}%` : `${params?.value ?? ''}%`;
-          };
-        }
+        // bar-h: 0 紧贴 yAxis(在 yAxis 右侧紧贴),bar 按数据方向延伸
+        //   负值 bar 从 0 向左(柱体在 yAxis 左侧,贴图左)
+        //   正值 bar 从 0 向右
+        // 用户要求:'柱子贴左侧' + '小于零的往左' + '0 贴左(yAxis 左 / 0 紧贴 yAxis)'
         option = {
-          tooltip: {
-            trigger: 'axis', axisPointer: { type: 'shadow' },
-            formatter: (params) => {
-              if (!params || !params.length) return '';
-              const p = params[0];
-              const orig = p.data && p.data._origValue !== undefined ? p.data._origValue : p.value;
-              return `${p.name}: ${orig}%`;
-            }
-          },
-          grid: { left: 84, right: 16, top: 14, bottom: 20 },
-          xAxis: { type: 'value', min: xMin, max: xMax, axisLabel: { formatter: axisFmt } },
+          tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: chart.tooltipFormat || '{b}: {c}' },
+          grid: { left: 84, right: 0, top: 14, bottom: 20 },
+          // max=0 让 0 强制在 yAxis 紧贴位置;min 让负值 bar 有空间
+          xAxis: { type: 'value', max: 0, axisLabel: { formatter: axisFmt } },
           // inverse: true 让 yAxis 从上到下排,跟表格行序一致
           yAxis: { type: 'category', data: chart.categories || [], inverse: true },
           series: [{
-            type: 'bar', data: plotData,
+            type: 'bar', data,
             label: chart.showLabel !== false ? {
-              show: true, position: 'right', distance: 4,
-              formatter: labelFmt, fontSize: 10, color: '#1f2937'
+              show: true, position: 'insideRight', distance: 4,
+              // ▼/▲ 标记涨跌 + bar 太短(<1%)时不显示(防文字溢出)
+              formatter: (p) => {
+                const v = p.value;
+                if (Math.abs(v) < 1) return '';
+                if (v < 0) return `▼${Math.abs(v)}%`;
+                if (v > 0) return `▲${v}%`;
+                return `${v}%`;
+              },
+              fontSize: 10, color: '#fff'
             } : undefined
           }]
         };
