@@ -319,18 +319,18 @@
             type: 'bar', data,
             label: chart.showLabel !== false ? {
               show: true,
-              // 负值 bar label 在 bar 起点(0)左侧 = insideLeft;正值 bar label 在 bar 终点(右)侧 = insideRight
-              // ECharts 用 formatter 决定单个 bar 的 position:
-              position: hasPositive ? 'insideEnd' : 'insideLeft',
+              // 所有 bar 都显示 label(不再隐藏 < 1%)
+              // position 'right' = bar 终点外(对正向 bar 是右端外,对负向 bar 是左端外)
+              // 小 bar 容不下时 ECharts 自动 hide,避免文字溢出
+              position: 'right',
               distance: 4,
               formatter: (p) => {
                 const v = p.value;
-                if (Math.abs(v) < 1) return '';
                 if (v < 0) return `▼${Math.abs(v)}%`;
                 if (v > 0) return `▲${v}%`;
                 return `${v}%`;
               },
-              fontSize: 10, color: '#fff'
+              fontSize: 10, color: '#1f2937'
             } : undefined
           }]
         };
