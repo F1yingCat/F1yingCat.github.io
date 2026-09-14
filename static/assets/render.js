@@ -381,13 +381,21 @@
         }
         option = {
           tooltip: tooltipOpt,
-          // legend 顶部,统一紧凑排(图例尽量高,放在 chart 最顶部 1-2 行)
+          // legend 顶部 + 紧凑排(图例尽量占 1-2 行,不放进图内)
+          // 4 series 时图例太长会挤,这里用简短 formatter + 小字号 + scroll
           legend: {
             top: 0,
-            textStyle: { fontSize: 11 },
-            itemGap: 6,
-            // line chart 全部 itemWidth 20(line 短),3 series 时 3 个一行也够
-            itemWidth: 20,
+            type: 'scroll',                       // 4+ series 时横向 scroll,不放图内挤
+            textStyle: { fontSize: 10 },
+            itemGap: 4,
+            itemWidth: 10,                         // line 缩到 10px,窄屏也能放下
+            pageIconSize: 10,
+            pageTextStyle: { fontSize: 9 },
+            // 简称:IF2609 (主力·沪深300) → IF2609(legend 短,信息在 tooltip 详)
+            formatter: (name) => {
+              const m = name.match(/^([A-Z]{2}\d{4})/);
+              return m ? m[1] : name;
+            },
             data: series.map(s => s.name)
           },
           // grid.top 给 legend 留位(1 行 18 / 5+ series 2 行 36)
@@ -396,7 +404,8 @@
             type: 'category',
             data: chart.categories || [],
             boundaryGap: false,
-            axisLabel: { fontSize: 10 }
+            // xAxis 自适应:数据点多时隐藏部分 label,防止 label 重叠
+            axisLabel: { fontSize: 10, interval: 'auto', hideOverlap: true }
           },
           // yAxis name:左侧 + 旋转 90 度垂直显示(垂直在 yAxis 中间)
           // 单 Y:chart.yLabel,双 Y:chart.yLabelLeft / yLabelRight
