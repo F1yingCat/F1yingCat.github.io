@@ -265,9 +265,12 @@
   function renderChart(chart) {
     if (!chart || !chart.id) return '';
     const titleHtml = chart.title ? `<div class="chart-title">${esc(chart.title)}</div>` : '';
+    // line chart 加 chart-line class,统一高度(不受 --chart-h 断点影响)
+    const isLine = chart.type === 'line';
+    const chartCls = `chart${isLine ? ' chart-line' : ''}`;
     const el = document.createElement('div');
     el.id = `chart-${chart.id}`;
-    el.className = 'chart';
+    el.className = chartCls;
     setTimeout(() => {
       const dom = document.getElementById(`chart-${chart.id}`);
       if (!dom || !window.echarts) return;

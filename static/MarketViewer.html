@@ -386,6 +386,14 @@
     section.span-2 > .chart{
       flex:0 0 auto; min-height:0;
     }
+    /* line chart 统一高度 320px(取所有 line chart 中最高的)— 跨断点统一 */
+    .chart.chart-line, .chart-line{
+      height: 320px !important;
+    }
+    @media (min-width: 1600px) and (max-width: 1919px) { .chart.chart-line{ height: 300px !important; } }
+    @media (min-width: 1200px) and (max-width: 1399px) { .chart.chart-line{ height: 280px !important; } }
+    @media (min-width: 992px) and (max-width: 1199px)  { .chart.chart-line{ height: 260px !important; } }
+    @media (min-width: 768px) and (max-width: 991px)   { .chart.chart-line{ height: 240px !important; } }
 
     /* 非 has-chart section:把 note 推到底 */
     section:not(.has-chart) > details.note{
