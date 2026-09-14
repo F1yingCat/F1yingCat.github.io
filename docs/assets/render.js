@@ -296,22 +296,33 @@
       let option;
       const axisFmt = chart.axisFormat || '{value}';
       if (chart.type === 'bar-h') {
-        // bar-h: 0 紧贴 yAxis(在 yAxis 右侧紧贴),bar 按数据方向延伸
-        //   负值 bar 从 0 向左(柱体在 yAxis 左侧,贴图左)
-        //   正值 bar 从 0 向右
-        // 用户要求:'柱子贴左侧' + '小于零的往左' + '0 贴左(yAxis 左 / 0 紧贴 yAxis)'
+        // bar-h: bar 按数据方向自动延伸(0 在数据范围中央/边缘)
+        //   负值 bar 从 0 向左,正值 bar 从 0 向右
+        //   数据全负时 0 紧贴 yAxis(图右);数据混合时 0 居中;数据全正时 0 紧贴图最左
+        // xAxis 自动 min/max,grid 左右对称留位
+        // yAxis labels grid.left = 84;xAxis label grid.bottom = 20
+        // 正/负最大值取绝对值,min = -absMax, max = absMax → 0 居中
+        const rawValues = data.map(d => (typeof d === 'object' ? d.value : d));
+        const absMax = Math.max(...rawValues.map(Math.abs)) * 1.1 || 1;
+        const hasPositive = rawValues.some(v => v > 0);
+        // xMin/xMax 对称(0 居中)— 数据全负/全正时不强行 0 在边缘
+        const xMin = -absMax;
+        const xMax = absMax;
+        // label 方向:正向 bar label 'right'(bar 终点右),负向 'left'(bar 起点左)
+        // 用 insideLeft/insideRight 避免文字超出图;小 bar(<1%)不显示
         option = {
           tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: chart.tooltipFormat || '{b}: {c}' },
-          grid: { left: 84, right: 0, top: 14, bottom: 20 },
-          // max=0 让 0 强制在 yAxis 紧贴位置;min 让负值 bar 有空间
-          xAxis: { type: 'value', max: 0, axisLabel: { formatter: axisFmt } },
-          // inverse: true 让 yAxis 从上到下排,跟表格行序一致
+          grid: { left: 84, right: 16, top: 14, bottom: 20 },
+          xAxis: { type: 'value', min: xMin, max: xMax, axisLabel: { formatter: axisFmt } },
           yAxis: { type: 'category', data: chart.categories || [], inverse: true },
           series: [{
             type: 'bar', data,
             label: chart.showLabel !== false ? {
-              show: true, position: 'insideRight', distance: 4,
-              // ▼/▲ 标记涨跌 + bar 太短(<1%)时不显示(防文字溢出)
+              show: true,
+              // 负值 bar label 在 bar 起点(0)左侧 = insideLeft;正值 bar label 在 bar 终点(右)侧 = insideRight
+              // ECharts 用 formatter 决定单个 bar 的 position:
+              position: hasPositive ? 'insideEnd' : 'insideLeft',
+              distance: 4,
               formatter: (p) => {
                 const v = p.value;
                 if (Math.abs(v) < 1) return '';
