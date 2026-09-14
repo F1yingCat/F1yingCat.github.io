@@ -461,8 +461,9 @@
     if (useSideLayout) classes.push('has-chart');
     // KPI 段(type:kpi)横着占满全宽 — 每个页面的"一"都是关键指标 banner
     if (isKpi || isWideById) classes.push('span-2');
-    // 4/5/6 段(美元/原油/金属)标的列贴左侧,整表 left
-    if (s.id === 'next_focus' || s.id === 'fx' || s.id === 'oil' || s.id === 'metal') classes.push('text-left');
+    // 6 段(明日起 / 下周关注)整表贴左:事件+时间+影响+重要度 都左对齐
+    if (s.id === 'next_focus') classes.push('text-left');
+    // 4/5/6 段(美元/原油/金属)标的列贴左(默认 first-child 已 left),其他列保持 right(数字列)
     const clsAttr = classes.length ? ` class="${classes.join(' ')}"` : '';
 
     let body;
