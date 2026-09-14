@@ -470,6 +470,9 @@
     if (useSideLayout) classes.push('has-chart');
     // KPI 段(type:kpi)横着占满全宽 — 每个页面的"一"都是关键指标 banner
     if (isKpi || isWideById) classes.push('span-2');
+    // line chart 段统一 span-2(2/3 宽)— 折线图更宽更易读
+    // 包括:us_yield(美债)/ broad_etfs(ETF)/ futures(期货主力 + 次主力)
+    if (s.id === 'us_yield' || s.id === 'broad_etfs' || s.id === 'futures') classes.push('span-2');
     // 6 段(明日起 / 下周关注)整表贴左:事件+时间+影响+重要度 都左对齐
     if (s.id === 'next_focus') classes.push('text-left');
     // 4/5/6 段(美元/原油/金属)标的列贴左(默认 first-child 已 left),其他列保持 right(数字列)
