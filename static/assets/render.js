@@ -302,31 +302,35 @@
         // bar-h: bar 按数据方向自动延伸(0 在数据范围中央/边缘)
         //   负值 bar 从 0 向左,正值 bar 从 0 向右
         //   数据全负时 0 紧贴 yAxis(图右);数据混合时 0 居中;数据全正时 0 紧贴图最左
-        // xAxis 自动 min/max,grid 左右对称留位
-        // yAxis labels grid.left = 84;xAxis label grid.bottom = 20
-        // 正/负最大值取绝对值,min = -absMax, max = absMax → 0 居中
         const rawValues = data.map(d => (typeof d === 'object' ? d.value : d));
         const absMax = Math.max(...rawValues.map(Math.abs)) * 1.1 || 1;
         const hasPositive = rawValues.some(v => v > 0);
-        // xMin/xMax 对称(0 居中)— 数据全负/全正时不强行 0 在边缘
         const xMin = -absMax;
         const xMax = absMax;
-        // label 方向:正向 bar label 'right'(bar 终点右),负向 'left'(bar 起点左)
-        // 用 insideLeft/insideRight 避免文字超出图;小 bar(<1%)不显示
+        // yAxis label 简称:'KOSPI (9/14 开盘)' → 'KOSPI','三星电子 (9/14 开盘)' → '三星电子','SK海力士 (9/14 开盘)' → 'SK海力士'
+        // (避免长 label 被 chart 边界截断,tooltip 显示完整名字)
+        const shortCats = (chart.categories || []).map(c => {
+          // 匹配开头一段非空白字符(中文/英文/数字)— 'KOSPI (9/14 开盘)' → 'KOSPI','SK海力士 (9/14 开盘)' → 'SK海力士'
+          const noSpace = c.replace(/\s.*$/, '');  // 截断第一个空格后的内容
+          return noSpace;
+        });
         option = {
-          tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: chart.tooltipFormat || '{b}: {c}' },
-          grid: { left: 84, right: 16, top: 14, bottom: 20 },
+          tooltip: {
+            trigger: 'axis', axisPointer: { type: 'shadow' },
+            formatter: (params) => {
+              if (!params || !params.length) return '';
+              const p = params[0];
+              const fullName = (chart.categories || [])[p.dataIndex] || p.name;
+              return `${fullName}<br/>${p.value}%`;
+            }
+          },
+          grid: { left: 60, right: 16, top: 14, bottom: 20 },
           xAxis: { type: 'value', min: xMin, max: xMax, axisLabel: { formatter: axisFmt } },
-          yAxis: { type: 'category', data: chart.categories || [], inverse: true },
+          yAxis: { type: 'category', data: shortCats, inverse: true },
           series: [{
             type: 'bar', data,
             label: chart.showLabel !== false ? {
-              show: true,
-              // 所有 bar 都显示 label(不再隐藏 < 1%)
-              // position 'right' = bar 终点外(对正向 bar 是右端外,对负向 bar 是左端外)
-              // 小 bar 容不下时 ECharts 自动 hide,避免文字溢出
-              position: 'right',
-              distance: 4,
+              show: true, position: 'right', distance: 4,
               formatter: (p) => {
                 const v = p.value;
                 if (v < 0) return `▼${Math.abs(v)}%`;
