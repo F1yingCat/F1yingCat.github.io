@@ -832,8 +832,9 @@
     if (kpiCard) {
       e.stopPropagation();
       const idx = kpiCard.dataset.kpiIdx;
-      // popover body 可能是 .kpi-full(premarket 1 段 KPI 卡)或 .event-kpi-full(postmarket 6 段事件卡)
-      const body = document.querySelector(`[data-kpi-idx="${idx}"]`);
+      // popover body 必须在 .popover-body 类(按钮也有 data-kpi-idx,所以要限定)
+      // body 可能是 .kpi-full / .event-kpi-full,统一用 div.popover-body[data-kpi-idx] 选
+      const body = document.querySelector(`div.popover-body[data-kpi-idx="${idx}"]`);
       if (!body) return;
       const wasHidden = body.hidden;
       closeAllPopovers();
