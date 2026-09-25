@@ -240,6 +240,11 @@
   .stars-4{ color:#ea580c; font-size:13px; letter-spacing:1px; }
   .stars-3{ color:#ca8a04; font-size:12.5px; letter-spacing:1px; }
   .stars-low{ color:var(--muted); font-size:12px; }
+  /* ★ 数量 > 3 时拆 2 行:PC 端隐藏 br 保持单行(避免破坏布局),移动端强制换行 */
+  .star-break{ display: none; }
+  @media (max-width: 599px) {
+    .star-break{ display: block; margin-top:2px; }  /* 移动:换行,带 2px 间距 */
+  }
 
   /* 事件型 KPI 卡片(postmarket 六段 明日起/下周关注)— grid auto-fill 自适应事件数量 */
   .event-kpi-grid{

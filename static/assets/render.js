@@ -121,12 +121,21 @@
         cellHtml = cellHtml.replace(/\n/g, '<br>');
       }
       // ★ 关注度字符统一染色 + 加大(避免字体重叠导致颜色不一致)
-      // ★★★★★ → .stars-5 红,★★★★ → .stars-4 橙,★★★ → .stars-3 黄,★★/★ → .stars-low 灰
+// ★★★★★ → .stars-5 红,★★★★ → .stars-4 橙,★★★ → .stars-3 黄,★★/★ → .stars-low 灰
+// ★ 数量 > 3 时拆 2 行:PC 端隐藏 br 强制单行(避免破坏现有布局),移动端用 .star-break 让第二行换下来
       const starMatch = cellHtml.match(/^(★+)$/);
       if (starMatch) {
         const n = starMatch[1].length;
         const cls = n >= 5 ? 'stars-5' : n === 4 ? 'stars-4' : n === 3 ? 'stars-3' : 'stars-low';
-        cellHtml = `<span class="${cls}">${cellHtml}</span>`;
+        let content = cellHtml;
+        if (n > 3) {
+          const half = Math.ceil(n / 2);  // 5 → 3+2, 4 → 2+2
+          // 用 <br class="star-break"> 而非普通 <br>,CSS 控制显示
+          // PC 端 .star-break { display: none } — 不换行(单行)
+          // 移动端 @media (max-width: 599px) .star-break { display: block } — 强制换行
+          content = `<span class="star-line1">${cellHtml.slice(0, half)}</span><br class="star-break"><span class="star-line2">${cellHtml.slice(half)}</span>`;
+        }
+        cellHtml = `<span class="${cls}">${content}</span>`;
       }
       return colCls ? `<td class="${esc(colCls)}">${cellHtml}</td>` : `<td>${cellHtml}</td>`;
     }
@@ -177,13 +186,18 @@
       const event = esc(r[evIdx] || '');
       const time = esc(r[tmIdx] || '');
       const impact = r[imIdx] || '';  // 原始 html(可能含 <b>)
-      const focus = esc(r[fgIdx] || '');
+      let focus = esc(r[fgIdx] || '');
       // 关注度分色:5 红/4 橙/3 黄/<3 灰
       const starMatch = (r[fgIdx] || '').match(/^(★+)$/);
       let starCls = 'stars-low';
       if (starMatch) {
         const n = starMatch[1].length;
         starCls = n >= 5 ? 'stars-5' : n === 4 ? 'stars-4' : n === 3 ? 'stars-3' : 'stars-low';
+        // ★ 数量 > 3 时拆 2 行:PC 端隐藏 br 单行,移动端 .star-break 强制换行
+        if (n > 3) {
+          const half = Math.ceil(n / 2);  // 5 → 3+2, 4 → 2+2
+          focus = `<span class="star-line1">${starMatch[1].slice(0, half)}</span><br class="star-break"><span class="star-line2">${starMatch[1].slice(half)}</span>`;
+        }
       }
       const popIdx = summaryCounter++;
       // 事件卡(第 1-2 行)+ 时间(第 3 行)
