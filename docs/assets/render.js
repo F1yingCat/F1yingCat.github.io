@@ -161,6 +161,52 @@
     return '<tr>' + row.map((c, i) => renderCell(c, i, columns)).join('') + '</tr>';
   }
 
+  /* 事件型 KPI 卡片(列含 事件/时间/影响/关注度)— 表格改 KPI 布局
+     每张卡片 3 行:
+       第 1 行:关注度(★ 数量,按数量分色)
+       第 2 行:事件
+       第 3 行:时间
+     点击卡片 → popover 显示完整"影响"内容
+     动态事件数量:grid auto-fill 自动多列(桌面 4-8,移动 2-3) */
+  function renderEventKpis(columns, rows) {
+    if (!rows || !rows.length) return '';
+    // 找各列位置
+    const colIdx = (name) => columns.findIndex(c => (c.text || c) === name);
+    const evIdx = colIdx('事件'), tmIdx = colIdx('时间'), imIdx = colIdx('影响'), fgIdx = colIdx('关注度');
+    const cards = rows.map((r) => {
+      const event = esc(r[evIdx] || '');
+      const time = esc(r[tmIdx] || '');
+      const impact = r[imIdx] || '';  // 原始 html(可能含 <b>)
+      const focus = esc(r[fgIdx] || '');
+      // 关注度分色:5 红/4 橙/3 黄/<3 灰
+      const starMatch = (r[fgIdx] || '').match(/^(★+)$/);
+      let starCls = 'stars-low';
+      if (starMatch) {
+        const n = starMatch[1].length;
+        starCls = n >= 5 ? 'stars-5' : n === 4 ? 'stars-4' : n === 3 ? 'stars-3' : 'stars-low';
+      }
+      const popIdx = summaryCounter++;
+      // 事件卡(第 1-2 行)+ 时间(第 3 行)
+      // 关注度 + 事件同行展示(★ 在事件前面)+ 时间在下一行
+      return `<div class="event-kpi kpi-pop" data-kpi-idx="${popIdx}" title="点击查看完整影响">
+        <div class="event-kpi-head">
+          <span class="${starCls}">${focus}</span>
+          <span class="event-kpi-title">${event}</span>
+        </div>
+        <div class="event-kpi-time">${time}</div>
+      </div>
+      <div class="popover-body event-kpi-full" data-kpi-idx="${popIdx}" hidden>
+        <div class="kpi-pop-head">
+          <span class="${starCls}">${focus}</span>
+          <span class="lbl">${event}</span>
+        </div>
+        <div class="event-kpi-time event-kpi-time-pop">${time}</div>
+        <div class="impact-text">${impact}</div>
+      </div>`;
+    }).join('');
+    return `<div class="event-kpi-grid">${cards}</div>`;
+  }
+
   function renderTable(columns, rows) {
     const thead = '<thead><tr>' +
       columns.map(c => {
@@ -523,8 +569,14 @@
       body = renderKpis(s.kpis);
     } else {
       // source 和 note 都折进 note 里(默认折叠),不在外面单独渲染
-      const inner = (hasKpis ? renderKpis(s.kpis) : '') +
-        (hasTable ? renderTable(s.columns, s.rows) : '') +
+      // 检测是否"事件型表格"(列含 事件/时间/影响/关注度)— 改用 KPI 卡片布局
+    const isEventTable = hasTable && s.columns && s.columns.length === 4 &&
+      s.columns.some(c => (c.text || c) === '事件') &&
+      s.columns.some(c => (c.text || c) === '关注度');
+
+    const inner = (hasKpis ? renderKpis(s.kpis) : '') +
+        (hasTable && !isEventTable ? renderTable(s.columns, s.rows) : '') +
+        (isEventTable ? renderEventKpis(s.columns, s.rows) : '') +
         (hasCharts ? s.charts.map(renderChart).join('') : '') +
         (s.legend ? `<div class="legend">${esc(s.legend)}</div>` : '') +
         renderNote(s.note, s.source);
