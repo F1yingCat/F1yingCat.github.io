@@ -591,6 +591,11 @@
     // 清空旧 chart 实例（页面切换时释放）
     chartInstances.length = 0;
 
+    // 清理旧 summary popover body(showPopover 已把它们 appendChild 到 <body>,
+    // 不在 header 内,所以 innerHTML 替换清理不到)— 防止多页面 idx 串台
+    closeAllPopovers();
+    document.querySelectorAll('.summary-full').forEach(b => b.remove());
+
     const content = document.getElementById('content');
     const sections = data.sections || [];
 
