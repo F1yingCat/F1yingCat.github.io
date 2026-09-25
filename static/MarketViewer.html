@@ -382,44 +382,61 @@
   /* ========== MOBILE: 列多表格压缩 + 横滑 ========== */
   /* =================================================== */
   @media (max-width: 599px) {
-    .table-wrap table{ font-size:12.5px; }
-    .table-wrap th, .table-wrap td{ padding:5px 6px; }
-    .table-wrap thead th{ padding:6px 6px; font-size:11.5px; }
+    /* 整体字号加大(原 13px → 15px)— 中等屏(471)看着不挤 */
+    body{ font-size:15px; }
+    .table-wrap table{ font-size:14px; }
+    .table-wrap th, .table-wrap td{ padding:7px 9px; }
+    .table-wrap thead th{ padding:8px 9px; font-size:12.5px; }
+    /* section padding 加大(原 13px 15px → 16px 18px)— 内容呼吸感 */
+    section{ padding:16px 18px; border-radius:10px; }
+    section h2{ font-size:17px; }
     /* 移动端 tag:点击弹浮窗显示全文,tag 本身完整显示+换行 */
     header.top .tag{
       max-width:100%;
-      white-space:normal;  /* tag 文字换行,占多行 */
+      white-space:normal;
       cursor:pointer;
+      padding:7px 12px; font-size:13.5px;
     }
     /* 移动端 summary 展开按钮:居中、加大,方便点击 */
     .summary-expand-wrap{
-      justify-content:center;  /* 居中(而不是贴左) */
+      justify-content:center;
       margin-top:18px;
     }
     .summary-expand{
-      font-size:13.5px; padding:9px 22px; border-radius:22px;
+      font-size:14.5px; padding:11px 26px; border-radius:24px;
       box-shadow:0 3px 6px rgba(37,99,235,.22);
     }
-    /* 移动端 popover:占满 viewport,内部 scroll(浮窗可滑动阅读全文) */
+    /* 移动端 popover:占满 viewport,内部 scroll */
     .popover-body{
-      max-width:calc(100vw - 24px);
-      max-height:calc(100vh - 80px);  /* 留点顶部状态栏空间 */
+      max-width:calc(100vw - 32px);
+      max-height:calc(100vh - 80px);
+      padding:14px 16px; font-size:14px;
     }
-    /* 移动端事件型 KPI:2 列网格(默认 auto-fill 220px minmax,移动屏窄只够 2 列) */
-    .event-kpi-grid{ grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:8px; }
-    .event-kpi{ padding:10px 12px; min-height:80px; }
-    .event-kpi-title{ font-size:12.5px; }
-    .event-kpi-time{ font-size:11.5px; }
+    /* KPI banner / card */
+    section.kpi-strip .kpi-row{ gap:10px; }
+    .kpi{ padding:12px 14px; min-height:90px; }
+    .kpi .lbl{ font-size:14px; }
+    .kpi .val{ font-size:21px; }
+    .kpi .chg{ font-size:13.5px; line-height:1.5; }
+    /* 移动端事件型 KPI:2 列网格 */
+    .event-kpi-grid{ grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:10px; }
+    .event-kpi{ padding:13px 14px; min-height:90px; }
+    .event-kpi-title{ font-size:13.5px; line-height:1.5; }
+    .event-kpi-time{ font-size:12px; }
+    /* chart 高度合理 */
+    .chart.chart-line{ height:240px !important; }
+    /* 浮动 nav */
+    .floating-tabs{ font-size:13px; }
+    .floating-tabs button{ padding:7px 12px; }
   }
 
   /* =================================================== */
-  /* 大屏触屏移动设备适配 — 鸿蒙 Mate 40 RS / iPad Mini 等
-     Mate 40 RS 物理分辨率 1344×2772 ppi 456, dpr ≈ 2.85 → CSS viewport ≈ 972 px(竖屏)
-     落在 768-991px 区间(基础桌面 3-col)→ 内容挤
-     解决:max-width: 1024px + pointer: coarse 检测触屏设备,走移动布局
-     (iPad Pro 11" 1194 CSS px 不命中,保留桌面布局) */
+  /* 中等屏移动设备适配(600-1024px)— 鸿蒙 Mate 40 RS / iPad Mini / 折叠屏
+     Mate 40 RS 物理分辨率 1344×2772 ppi 456, dpr ≈ 2.85 → CSS viewport ≈ 472 px(竖屏)/972(横屏)
+     不依赖 pointer:coarse(鸿蒙浏览器可能识别为 fine),纯按 viewport width 判断
+     1-col 网格 + 加大 padding + 字号比小手机大 */
   /* =================================================== */
-  @media (max-width: 1024px) and (pointer: coarse) {
+  @media (min-width: 600px) and (max-width: 1024px) {
     /* 整体字号 +1.5px,易读 */
     body{ font-size:15.5px; }
     /* section padding 加大,内容呼吸感 */
