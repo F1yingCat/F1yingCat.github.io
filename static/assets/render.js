@@ -201,11 +201,13 @@
     if (!h) return '';
     // summary 限 500 字(防御 Mavis 生成超长 summary 撑高 header)
     // 超出部分用 ellipsis 截断(<b> 标签不计入字数计算)
+    // 长 summary 下方加"展开全文"按钮,点击触发 popover 显示完整内容
     const summaryRaw = h.summary || '';
     const summaryPlain = summaryRaw.replace(/<\/?b>/g, '');  // 去标签数纯字数
     const MAX_SUMMARY = 500;
+    const isTruncated = summaryPlain.length > MAX_SUMMARY;
     let summaryDisplay = summaryRaw;
-    if (summaryPlain.length > MAX_SUMMARY) {
+    if (isTruncated) {
       // 找最接近 500 字的边界(句号/分号),保持语义完整
       const cutAt = summaryPlain.lastIndexOf('。', MAX_SUMMARY);
       const end = cutAt > 100 ? cutAt + 1 : MAX_SUMMARY;
@@ -214,9 +216,18 @@
     const summaryHtml = summaryDisplay
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
+    // 全文 html(用于 popover)— esc 后保留 <b> 标签
+    const summaryFullHtml = summaryRaw
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
+    const expandBtn = isTruncated
+      ? `<button type="button" class="summary-expand" data-summary-idx="0" title="展开全文 / Collapse full text">展开全文 ↓</button>` +
+        `<div class="popover-body summary-full" data-summary-idx="0" hidden>${summaryFullHtml}</div>`
+      : '';
     return renderTagsRow(h.tags) +
       `<h1>${esc(h.title || '')}</h1>
-      <p>${summaryHtml}</p>`;
+      <p class="header-summary">${summaryHtml}</p>
+      ${expandBtn}`;
   }
 
   function renderFooter(f) {
@@ -714,6 +725,21 @@
       closeAllPopovers();
       if (wasHidden) {
         showPopover(body, tag);
+        trackOpen();
+      }
+      return;
+    }
+    // summary expand:点击 summary 展开按钮显示完整 summary
+    const expandBtn = e.target.closest('.summary-expand');
+    if (expandBtn) {
+      e.stopPropagation();
+      const idx = expandBtn.dataset.summaryIdx;
+      const body = document.querySelector(`.summary-full[data-summary-idx="${idx}"]`);
+      if (!body) return;
+      const wasHidden = body.hidden;
+      closeAllPopovers();
+      if (wasHidden) {
+        showPopover(body, expandBtn);
         trackOpen();
       }
       return;
