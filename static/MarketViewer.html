@@ -247,18 +247,24 @@
     /* scrollbar 美化 */
     scrollbar-width:thin; scrollbar-color:#cbd5e1 transparent;
   }
-  /* summary 展开按钮:summary 末尾的"展开全文 ↓"按钮 */
+  /* summary 展开按钮:header 末尾的"阅读全文"按钮(实色背景,显眼) */
+  .summary-expand-wrap{
+    display:flex; justify-content:flex-start; margin-top:14px;
+  }
   .summary-expand{
-    display:inline-block; margin-top:6px;
-    background:transparent; border:1px dashed var(--line);
-    color:var(--accent); font-size:11.5px; font-weight:500;
-    padding:4px 12px; border-radius:14px;
-    cursor:pointer; transition:all .15s ease;
+    display:inline-flex; align-items:center; gap:4px;
+    background:var(--accent); color:#fff;
+    border:0; border-radius:18px;
+    font-size:12.5px; font-weight:600; letter-spacing:.02em;
+    padding:7px 16px; cursor:pointer;
+    transition:all .15s ease;
+    box-shadow:0 2px 4px rgba(37,99,235,.18);
   }
   .summary-expand:hover{
-    background:var(--accent-soft); border-color:var(--accent);
-    border-style:solid;
+    background:#1d4ed8; transform:translateY(-1px);
+    box-shadow:0 4px 8px rgba(37,99,235,.28);
   }
+  .summary-expand:active{ transform:translateY(0); }
   .popover-body::-webkit-scrollbar{ width:6px; }
   .popover-body::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:3px; }
   [data-theme="dark"] .popover-body{ background:#0f1420; box-shadow:0 8px 28px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.3); }
@@ -308,6 +314,20 @@
       max-width:100%;
       white-space:normal;  /* tag 文字换行,占多行 */
       cursor:pointer;
+    }
+    /* 移动端 summary 展开按钮:居中、加大,方便点击 */
+    .summary-expand-wrap{
+      justify-content:center;  /* 居中(而不是贴左) */
+      margin-top:18px;
+    }
+    .summary-expand{
+      font-size:13.5px; padding:9px 22px; border-radius:22px;
+      box-shadow:0 3px 6px rgba(37,99,235,.22);
+    }
+    /* 移动端 popover:占满 viewport,内部 scroll(浮窗可滑动阅读全文) */
+    .popover-body{
+      max-width:calc(100vw - 24px);
+      max-height:calc(100vh - 80px);  /* 留点顶部状态栏空间 */
     }
   }
 

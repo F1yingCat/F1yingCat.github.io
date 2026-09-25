@@ -201,7 +201,7 @@
     if (!h) return '';
     // summary 限 500 字(防御 Mavis 生成超长 summary 撑高 header)
     // 超出部分用 ellipsis 截断(<b> 标签不计入字数计算)
-    // 长 summary 下方加"展开全文"按钮,点击触发 popover 显示完整内容
+    // 长 summary 时,header 末尾加"展开全文"按钮,点击触发 popover 显示完整内容
     const summaryRaw = h.summary || '';
     const summaryPlain = summaryRaw.replace(/<\/?b>/g, '');  // 去标签数纯字数
     const MAX_SUMMARY = 500;
@@ -220,9 +220,12 @@
     const summaryFullHtml = summaryRaw
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
+    // 按钮 + popover 放在 header 末尾(独立位置,移动端始终在 summary 下方的底部)
     const expandBtn = isTruncated
-      ? `<button type="button" class="summary-expand" data-summary-idx="0" title="展开全文 / Collapse full text">展开全文 ↓</button>` +
-        `<div class="popover-body summary-full" data-summary-idx="0" hidden>${summaryFullHtml}</div>`
+      ? `<div class="summary-expand-wrap">
+          <button type="button" class="summary-expand" data-summary-idx="0" title="点击展开完整 summary">阅读全文</button>
+        </div>
+        <div class="popover-body summary-full" data-summary-idx="0" hidden>${summaryFullHtml}</div>`
       : '';
     return renderTagsRow(h.tags) +
       `<h1>${esc(h.title || '')}</h1>
