@@ -193,7 +193,7 @@
             <span class="lbl">${esc(k.label)}</span>
             <span class="val">${esc(k.value)}</span>
           </div>
-          <div class="chg${dir}">${chgHtml}</div>
+          <div class="chg-pop">${chgHtml}</div>
         </div>`;
       }).join('') +
       '</div>';
