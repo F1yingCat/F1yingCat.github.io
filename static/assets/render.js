@@ -120,6 +120,14 @@
         cellHtml = cellHtml.replace(/^([\u4e00-\u9fff·、]+) ([A-Za-z0-9(\s].*)$/, '$1<br>$2');
         cellHtml = cellHtml.replace(/\n/g, '<br>');
       }
+      // ★ 关注度字符统一染色 + 加大(避免字体重叠导致颜色不一致)
+      // ★★★★★ → .stars-5 红,★★★★ → .stars-4 橙,★★★ → .stars-3 黄,★★/★ → .stars-low 灰
+      const starMatch = cellHtml.match(/^(★+)$/);
+      if (starMatch) {
+        const n = starMatch[1].length;
+        const cls = n >= 5 ? 'stars-5' : n === 4 ? 'stars-4' : n === 3 ? 'stars-3' : 'stars-low';
+        cellHtml = `<span class="${cls}">${cellHtml}</span>`;
+      }
       return colCls ? `<td class="${esc(colCls)}">${cellHtml}</td>` : `<td>${cellHtml}</td>`;
     }
     if (typeof c !== 'object') return `<td>${esc(c)}</td>`;

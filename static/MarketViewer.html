@@ -235,6 +235,11 @@
     content:"详情 / 解读"; font-weight:500;
   }
   .popover-note.open .popover-trigger{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  /* 关注度 ★ 字符:按数量分级染色 + 加大,避免字体重叠导致颜色不一致 */
+  .stars-5{ color:#dc2626; font-size:14px; letter-spacing:1px; font-weight:600; }
+  .stars-4{ color:#ea580c; font-size:13px; letter-spacing:1px; }
+  .stars-3{ color:#ca8a04; font-size:12.5px; letter-spacing:1px; }
+  .stars-low{ color:var(--muted); font-size:12px; }
   .popover-body{
     position:fixed; z-index:99999;
     background:var(--bg); border:1px solid var(--line); border-radius:10px;
