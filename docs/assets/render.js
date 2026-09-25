@@ -78,6 +78,8 @@
 
   /* ========== 图表实例管理（用于 resize） ========== */
   const chartInstances = [];
+  // summary popover 全局唯一 id 计数器(避免多页面切换时 idx 重复串台)
+  let summaryCounter = 0;
   function registerChart(inst) { chartInstances.push(inst); }
   function resizeAllCharts() {
     chartInstances.forEach(inst => { try { inst.resize(); } catch (_) {} });
@@ -221,11 +223,12 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
     // 按钮 + popover 放在 header 末尾(独立位置,移动端始终在 summary 下方的底部)
+    // 用全局唯一 summaryCounter 避免多个页面(idx 重复)切换时 popover 串台
     const expandBtn = isTruncated
       ? `<div class="summary-expand-wrap">
-          <button type="button" class="summary-expand" data-summary-idx="0" title="点击展开完整 summary">阅读全文</button>
+          <button type="button" class="summary-expand" data-summary-idx="${summaryCounter++}" title="点击展开完整 summary">阅读全文</button>
         </div>
-        <div class="popover-body summary-full" data-summary-idx="0" hidden>${summaryFullHtml}</div>`
+        <div class="popover-body summary-full" data-summary-idx="${summaryCounter - 1}" hidden>${summaryFullHtml}</div>`
       : '';
     return renderTagsRow(h.tags) +
       `<h1>${esc(h.title || '')}</h1>
