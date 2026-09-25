@@ -657,15 +657,16 @@
 
   /* ========== 渲染单个页面的内容 ========== */
   function renderPage(data, pageId) {
+    // 关键:先清理旧 summary + kpi popover body,再 renderHeader
+    // (旧 popover 已被 showPopover 移到 <body> 末尾,不在 header 内,innerHTML 替换清理不到)
+    // (如果放在 renderHeader 之后,新生成的 summary-full 也会被误删,导致按钮失效)
+    closeAllPopovers();
+    document.querySelectorAll('.summary-full, .kpi-full, .event-kpi-full').forEach(b => b.remove());
+
     document.getElementById('header').innerHTML = renderHeader(data.header);
 
     // 清空旧 chart 实例（页面切换时释放）
     chartInstances.length = 0;
-
-    // 清理旧 summary + kpi popover body(showPopover 已把它们 appendChild 到 <body>,
-    // 不在 header 内,所以 innerHTML 替换清理不到)— 防止多页面 idx 串台
-    closeAllPopovers();
-    document.querySelectorAll('.summary-full, .kpi-full').forEach(b => b.remove());
 
     const content = document.getElementById('content');
     const sections = data.sections || [];
@@ -831,7 +832,8 @@
     if (kpiCard) {
       e.stopPropagation();
       const idx = kpiCard.dataset.kpiIdx;
-      const body = document.querySelector(`.kpi-full[data-kpi-idx="${idx}"]`);
+      // popover body 可能是 .kpi-full(premarket 1 段 KPI 卡)或 .event-kpi-full(postmarket 6 段事件卡)
+      const body = document.querySelector(`[data-kpi-idx="${idx}"]`);
       if (!body) return;
       const wasHidden = body.hidden;
       closeAllPopovers();
