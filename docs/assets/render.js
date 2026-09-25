@@ -173,9 +173,18 @@
         const dir = k.dir ? ` ${esc(k.dir)}` : '';
         // chg 支持 inline <b> 标签加粗(数据源可信,跟 summary 处理一致)
         const chgHtml = esc(k.chg).replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
-        return `<div class="kpi">
+        // 每个 KPI 卡片可点击,弹 popover 显示完整 chg + label + value
+        const popIdx = summaryCounter++;
+        return `<div class="kpi kpi-pop" data-kpi-idx="${popIdx}" title="点击查看完整内容">
           <div class="lbl">${esc(k.label)}</div>
           <div class="val">${esc(k.value)}</div>
+          <div class="chg${dir}">${chgHtml}</div>
+        </div>
+        <div class="popover-body kpi-full" data-kpi-idx="${popIdx}" hidden>
+          <div class="kpi-pop-head">
+            <span class="lbl">${esc(k.label)}</span>
+            <span class="val">${esc(k.value)}</span>
+          </div>
           <div class="chg${dir}">${chgHtml}</div>
         </div>`;
       }).join('') +
@@ -591,10 +600,10 @@
     // 清空旧 chart 实例（页面切换时释放）
     chartInstances.length = 0;
 
-    // 清理旧 summary popover body(showPopover 已把它们 appendChild 到 <body>,
+    // 清理旧 summary + kpi popover body(showPopover 已把它们 appendChild 到 <body>,
     // 不在 header 内,所以 innerHTML 替换清理不到)— 防止多页面 idx 串台
     closeAllPopovers();
-    document.querySelectorAll('.summary-full').forEach(b => b.remove());
+    document.querySelectorAll('.summary-full, .kpi-full').forEach(b => b.remove());
 
     const content = document.getElementById('content');
     const sections = data.sections || [];
@@ -751,6 +760,21 @@
       closeAllPopovers();
       if (wasHidden) {
         showPopover(body, expandBtn);
+        trackOpen();
+      }
+      return;
+    }
+    // KPI pop:点击 KPI 卡片显示完整内容
+    const kpiCard = e.target.closest('.kpi-pop');
+    if (kpiCard) {
+      e.stopPropagation();
+      const idx = kpiCard.dataset.kpiIdx;
+      const body = document.querySelector(`.kpi-full[data-kpi-idx="${idx}"]`);
+      if (!body) return;
+      const wasHidden = body.hidden;
+      closeAllPopovers();
+      if (wasHidden) {
+        showPopover(body, kpiCard);
         trackOpen();
       }
       return;
