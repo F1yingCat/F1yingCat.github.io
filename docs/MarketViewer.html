@@ -295,6 +295,16 @@
     overflow:hidden; text-overflow:ellipsis;
     margin-top:1px;
   }
+  /* KPI 卡片可点击,hover 提示 */
+  .kpi.kpi-pop{ cursor:pointer; }
+  /* KPI popover 头部(label + value 一行) */
+  .kpi-pop-head{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-bottom:8px; padding-bottom:8px;
+    border-bottom:1px dashed var(--line);
+  }
+  .kpi-pop-head .lbl{ font-size:12px; color:var(--muted); font-weight:500; }
+  .kpi-pop-head .val{ font-size:15px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
 
   footer{font-size:13px;color:var(--sub);text-align:center;padding:10px;}
   .legend{font-size:13px;color:var(--sub);margin:-2px 0 6px;}
