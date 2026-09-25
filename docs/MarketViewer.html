@@ -413,10 +413,13 @@
   }
 
   /* =================================================== */
-  /* 大屏触屏移动设备(鸿蒙 2772×1344 dpr 2.5 ≈ 1108 CSS / iPad Mini 触屏)
-     pointer: coarse 区分触摸设备(避免 iPad Pro 带键盘触发) */
+  /* 大屏触屏移动设备适配 — 鸿蒙 Mate 40 RS / iPad Mini 等
+     Mate 40 RS 物理分辨率 1344×2772 ppi 456, dpr ≈ 2.85 → CSS viewport ≈ 972 px(竖屏)
+     落在 768-991px 区间(基础桌面 3-col)→ 内容挤
+     解决:max-width: 1024px + pointer: coarse 检测触屏设备,走移动布局
+     (iPad Pro 11" 1194 CSS px 不命中,保留桌面布局) */
   /* =================================================== */
-  @media (max-width: 1199px) and (pointer: coarse) {
+  @media (max-width: 1024px) and (pointer: coarse) {
     /* 整体字号 +1.5px,易读 */
     body{ font-size:15.5px; }
     /* section padding 加大,内容呼吸感 */
