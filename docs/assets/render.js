@@ -201,7 +201,7 @@
           <span class="lbl">${event}</span>
         </div>
         <div class="event-kpi-time event-kpi-time-pop">${time}</div>
-        <div class="impact-text">${impact}</div>
+        <div class="impact-text">${impact.replace(/▲/g, '<span class="up">▲</span>').replace(/▼/g, '<span class="down">▼</span>')}</div>
       </div>`;
     }).join('');
     return `<div class="event-kpi-grid">${cards}</div>`;
@@ -239,7 +239,7 @@
             <span class="lbl">${esc(k.label)}</span>
             <span class="val">${esc(k.value)}</span>
           </div>
-          <div class="chg-pop">${chgHtml}</div>
+          <div class="chg-pop">${chgHtml.replace(/▲/g, '<span class="up">▲</span>').replace(/▼/g, '<span class="down">▼</span>')}</div>
         </div>`;
       }).join('') +
       '</div>';
