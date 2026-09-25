@@ -413,6 +413,52 @@
   }
 
   /* =================================================== */
+  /* 大屏触屏移动设备(鸿蒙 2772×1344 dpr 2.5 ≈ 1108 CSS / iPad Mini 触屏)
+     pointer: coarse 区分触摸设备(避免 iPad Pro 带键盘触发) */
+  /* =================================================== */
+  @media (max-width: 1199px) and (pointer: coarse) {
+    /* 整体字号 +1.5px,易读 */
+    body{ font-size:15.5px; }
+    /* section padding 加大,内容呼吸感 */
+    section{ padding:16px 18px; border-radius:12px; }
+    section h2{ font-size:17px; margin-bottom:8px; }
+    /* 1-col 网格:避免桌面 3-col 在移动屏过挤 */
+    #content{ display:grid; grid-template-columns:1fr; gap:14px; }
+    #content > section.span-2{grid-column:1; min-width:0; }
+    /* KPI banner:2 列(原本 3×3,在移动端 2×4 更易读) */
+    section.kpi-strip .kpi-row{
+      grid-template-columns:repeat(2, 1fr); gap:12px;
+    }
+    .kpi{ padding:14px 16px; min-height:96px; }
+    .kpi .lbl{ font-size:14.5px; }
+    .kpi .val{ font-size:22px; }
+    .kpi .chg{ font-size:14px; line-height:1.5; -webkit-line-clamp:4; }
+    /* 表格:稍大字号 + padding */
+    .table-wrap table{ font-size:13.5px; }
+    .table-wrap th, .table-wrap td{ padding:8px 10px; }
+    .table-wrap thead th{ padding:9px 10px; font-size:12px; }
+    /* 折线图 / 柱状图:合理高度(避免过大占屏) */
+    .chart.chart-line{ height:280px !important; }
+    /* event-kpi:2 列(原本 auto-fill 220px minmax 4 列,移动端 2 列) */
+    .event-kpi-grid{ grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:10px; }
+    .event-kpi{ padding:14px 16px; min-height:96px; }
+    .event-kpi-title{ font-size:14px; }
+    .event-kpi-time{ font-size:12.5px; }
+    /* 触摸目标加大:tag / popover-trigger / 按钮 */
+    header.top .tag{ padding:7px 12px; font-size:13px; }
+    .summary-expand{ font-size:14.5px; padding:11px 24px; }
+    /* popover 全屏 */
+    .popover-body{
+      max-width:calc(100vw - 32px);
+      max-height:calc(100vh - 60px);
+      padding:14px 16px; font-size:13.5px;
+    }
+    /* 浮动 tab 字号加大 */
+    .floating-tabs{ font-size:13px; }
+    .floating-tabs button{ padding:7px 12px; }
+  }
+
+  /* =================================================== */
   /* ========== DESKTOP (>= 768px) ==================== */
   /* 基础桌面规则(768-1199 用基础值,大屏用 @media 覆盖) */
   /* =================================================== */
