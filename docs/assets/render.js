@@ -241,11 +241,13 @@
       .replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
     // 按钮 + popover 放在 header 末尾(独立位置,移动端始终在 summary 下方的底部)
     // 用全局唯一 summaryCounter 避免多个页面(idx 重复)切换时 popover 串台
+    // 先 +1 再用返回值,确保 button idx = popover idx(避免 ++ 副作用导致错位)
+    const expandIdx = summaryCounter++;
     const expandBtn = isTruncated
       ? `<div class="summary-expand-wrap">
-          <button type="button" class="summary-expand" data-summary-idx="${summaryCounter++}" title="点击展开完整 summary">阅读全文</button>
+          <button type="button" class="summary-expand" data-summary-idx="${expandIdx}" title="点击展开完整 summary">阅读全文</button>
         </div>
-        <div class="popover-body summary-full" data-summary-idx="${summaryCounter - 1}" hidden>${summaryFullHtml}</div>`
+        <div class="popover-body summary-full" data-summary-idx="${expandIdx}" hidden>${summaryFullHtml}</div>`
       : '';
     return renderTagsRow(h.tags) +
       `<h1>${esc(h.title || '')}</h1>
