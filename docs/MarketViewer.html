@@ -240,6 +240,50 @@
   .stars-4{ color:#ea580c; font-size:13px; letter-spacing:1px; }
   .stars-3{ color:#ca8a04; font-size:12.5px; letter-spacing:1px; }
   .stars-low{ color:var(--muted); font-size:12px; }
+
+  /* 事件型 KPI 卡片(postmarket 六段 明日起/下周关注)— grid auto-fill 自适应事件数量 */
+  .event-kpi-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));
+    gap:10px;
+    margin-top:8px;
+  }
+  .event-kpi{
+    padding:12px 14px;
+    background:var(--card-bg, #fff);
+    border:1px solid var(--line);
+    border-radius:8px;
+    cursor:pointer;
+    transition:all .15s ease;
+    display:flex; flex-direction:column;
+    min-height:90px;
+  }
+  [data-theme="dark"] .event-kpi{ background:#0f1420; }
+  .event-kpi:hover{
+    border-color:var(--accent);
+    transform:translateY(-1px);
+    box-shadow:0 4px 10px rgba(0,0,0,.06);
+  }
+  /* 第 1 行:★ 关注度 + 事件 */
+  .event-kpi-head{
+    display:flex; align-items:flex-start; gap:6px; margin-bottom:6px;
+  }
+  .event-kpi-title{
+    font-size:13.5px; line-height:1.45; color:var(--ink); font-weight:500;
+    flex:1; min-width:0;
+    /* 多行换行,长事件名 2-3 行内显示 */
+  }
+  /* 第 2 行:时间 */
+  .event-kpi-time{
+    font-size:12px; color:var(--sub); font-variant-numeric:tabular-nums;
+    margin-top:auto;  /* 推到底部对齐 */
+  }
+  /* popover 内影响文字 */
+  .event-kpi-time-pop{ margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--line); }
+  .impact-text{
+    font-size:13px; line-height:1.7; color:var(--ink); font-weight:500;
+  }
+  .impact-text b{ font-weight:700; }
   .popover-body{
     position:fixed; z-index:99999;
     background:var(--bg); border:1px solid var(--line); border-radius:10px;
@@ -351,6 +395,11 @@
       max-width:calc(100vw - 24px);
       max-height:calc(100vh - 80px);  /* 留点顶部状态栏空间 */
     }
+    /* 移动端事件型 KPI:2 列网格(默认 auto-fill 220px minmax,移动屏窄只够 2 列) */
+    .event-kpi-grid{ grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:8px; }
+    .event-kpi{ padding:10px 12px; min-height:80px; }
+    .event-kpi-title{ font-size:12.5px; }
+    .event-kpi-time{ font-size:11.5px; }
   }
 
   /* =================================================== */
