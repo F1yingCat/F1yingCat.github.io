@@ -161,7 +161,13 @@
     if (c.type === 'html') {
       return `<td${colCls ? ' class="'+esc(colCls)+'"' : ''}>${c.html || ''}</td>`;
     }
-    const dir = c.dir ? esc(c.dir) : '';
+    // dir 智能同步:▲ 自动 up,▼ 自动 down(避免颜色与符号冲突)
+    let dir = c.dir ? esc(c.dir) : '';
+    if (c.text && c.text.indexOf('▲') !== -1 && c.dir !== 'up') {
+      dir = 'up';
+    } else if (c.text && c.text.indexOf('▼') !== -1 && c.dir !== 'down') {
+      dir = 'down';
+    }
     const classes = [dir, finalCls.trim()].filter(Boolean).join(' ');
     return classes ? `<td class="${classes}">${esc(c.text || '')}</td>` : `<td>${esc(c.text || '')}</td>`;
   }
@@ -238,7 +244,15 @@
     if (!kpis || !kpis.length) return '';
     return '<div class="kpi-row">' +
       kpis.map(k => {
-        const dir = k.dir ? ` ${esc(k.dir)}` : '';
+        // dir 智能同步:▲ 自动 up(红),▼ 自动 down(绿)— 避免 AI 数据 ▲/▼ 与 dir 颜色不一致
+        // 例 CNH 数值方向 ▲(汇率数字涨) + dir=down(人民币贬值语义)— 颜色冲突
+        // 修法:以 ▲/▼ 符号为主,跟 ▲/▼ 一致,避免视觉冲突
+        let dir = k.dir ? ` ${esc(k.dir)}` : '';
+        if (k.chg && k.chg.indexOf('▲') !== -1 && k.dir !== 'up') {
+          dir = ' up';
+        } else if (k.chg && k.chg.indexOf('▼') !== -1 && k.dir !== 'down') {
+          dir = ' down';
+        }
         // chg 支持 inline <b> 标签加粗(数据源可信,跟 summary 处理一致)
         const chgHtml = esc(k.chg).replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
         // 每个 KPI 卡片可点击,弹 popover 显示完整 chg + label + value
