@@ -161,15 +161,20 @@
     if (c.type === 'html') {
       return `<td${colCls ? ' class="'+esc(colCls)+'"' : ''}>${c.html || ''}</td>`;
     }
-    // dir 智能同步:▲ 自动 up,▼ 自动 down(避免颜色与符号冲突)
-    let dir = c.dir ? esc(c.dir) : '';
-    if (c.text && c.text.indexOf('▲') !== -1 && c.dir !== 'up') {
-      dir = 'up';
-    } else if (c.text && c.text.indexOf('▼') !== -1 && c.dir !== 'down') {
-      dir = 'down';
+    const dir = c.dir ? esc(c.dir) : '';
+    // ▲/▼ 符号跟 dir 一致:A 股金融习惯——红涨绿跌
+    // 例 CNH 数值方向 ▲(汇率数字涨)+ dir=down(人民币贬):
+    //   我们重写为 ▼ 让符号跟"对人民币贬值"语义一致(显示绿+▼)
+    // 例 DXY 数据方向 ▲+ dir=up(美元强势):
+    //   保持 ▲(▲+红,美元涨)
+    let displayText = c.text || '';
+    if (dir === 'up') {
+      displayText = displayText.replace(/▼/g, '▲');
+    } else if (dir === 'down') {
+      displayText = displayText.replace(/▲/g, '▼');
     }
     const classes = [dir, finalCls.trim()].filter(Boolean).join(' ');
-    return classes ? `<td class="${classes}">${esc(c.text || '')}</td>` : `<td>${esc(c.text || '')}</td>`;
+    return classes ? `<td class="${classes}">${esc(displayText)}</td>` : `<td>${esc(displayText || '')}</td>`;
   }
 
   function renderRow(row, columns) {
@@ -244,17 +249,20 @@
     if (!kpis || !kpis.length) return '';
     return '<div class="kpi-row">' +
       kpis.map(k => {
-        // dir 智能同步:▲ 自动 up(红),▼ 自动 down(绿)— 避免 AI 数据 ▲/▼ 与 dir 颜色不一致
-        // 例 CNH 数值方向 ▲(汇率数字涨) + dir=down(人民币贬值语义)— 颜色冲突
-        // 修法:以 ▲/▼ 符号为主,跟 ▲/▼ 一致,避免视觉冲突
+        // dir 智能同步 ▲/▼ 符号 — A 股习惯红涨绿跌
+        // dir=up:把 ▼ 改 ▲(▲+红)
+        // dir=down:把 ▲ 改 ▼(▼+绿)
+        // 例 CNH 数值方向 ▲(汇率数字涨)+ dir=down(人民币贬):
+        //   自动改为 ▼ + 绿(对人民币贬值,符合直觉)
         let dir = k.dir ? ` ${esc(k.dir)}` : '';
-        if (k.chg && k.chg.indexOf('▲') !== -1 && k.dir !== 'up') {
-          dir = ' up';
-        } else if (k.chg && k.chg.indexOf('▼') !== -1 && k.dir !== 'down') {
-          dir = ' down';
+        let chgDisplay = k.chg || '';
+        if (k.dir === 'up') {
+          chgDisplay = chgDisplay.replace(/▼/g, '▲');
+        } else if (k.dir === 'down') {
+          chgDisplay = chgDisplay.replace(/▲/g, '▼');
         }
         // chg 支持 inline <b> 标签加粗(数据源可信,跟 summary 处理一致)
-        const chgHtml = esc(k.chg).replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
+        const chgHtml = esc(chgDisplay).replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
         // 每个 KPI 卡片可点击,弹 popover 显示完整 chg + label + value
         const popIdx = summaryCounter++;
         return `<div class="kpi kpi-pop" data-kpi-idx="${popIdx}" title="点击查看完整内容">
