@@ -1,285 +1,936 @@
 <!DOCTYPE html>
-<html data-color-mode="light" data-dark-theme="dark" data-light-theme="light" lang="zh-CN">
+<html lang="zh-CN">
 <head>
-    <meta content="text/html; charset=utf-8" http-equiv="content-type" />
-    <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <link href='https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/Primer/21.0.7/primer.css' rel='stylesheet' />
-    
-    <link rel="icon" href="https://github.githubassets.com/favicons/favicon.svg"><script>
-        let theme = localStorage.getItem("meek_theme") || "light";
-        document.documentElement.setAttribute("data-color-mode", theme);
-    </script>
-<meta name="description" content="Blog Title search page">
-<title>Blog Title - Tag</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>归档 · F1yingCat</title>
+<meta name="description" content="按标签和日期翻旧文章。">
+<meta property="og:title" content="归档 · F1yingCat">
+<meta property="og:description" content="按标签和日期翻旧文章。">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%2314121c'/><rect x='4' y='2' width='2' height='2' fill='%23ef7c2a'/><rect x='10' y='2' width='2' height='2' fill='%23ef7c2a'/><rect x='3' y='3' width='10' height='8' fill='%23ef7c2a'/><rect x='4' y='6' width='2' height='2' fill='%2314121c'/><rect x='10' y='6' width='2' height='2' fill='%2314121c'/><rect x='6' y='9' width='4' height='4' fill='%23ef7c2a'/></svg>">
+<link rel="stylesheet" href="assets/site.css">
+<style>
+/* 这一页是整屏画布，没有纵向滚动，所以 site.css 里 sticky 的 HUD 要改成浮在画布上，
+   body 也要锁死（否则整屏 canvas 下面还拖着一根滚动条） */
+html,body{overflow:hidden;height:100%}
+#cView{position:absolute;inset:0;width:100%;height:100%;touch-action:none;z-index:1}
+/* 猫层：透明，只画猫和扬尘。z-index 夹在画布(1)和纸条(5)之间，
+   所以猫从牌子【前面】经过。pointer-events:none 是因为拖动绑在 cView 上 */
+#cCat{position:absolute;inset:0;width:100%;height:100%;z-index:6;pointer-events:none}
+#plates{z-index:5;visibility:hidden}
+.hud{position:absolute;left:0;right:0;top:0}
 
+/* 底栏：样式和主页面 site.css 的 .track 逐条对齐——4px 细条、16px 方块刻度、
+   同一套 --dusk/--orange/--amber 配色，连悬停时浮出来的标签都照抄。
+   主页面是"点一下跳到别的区"，这里是"点一下走到那块板子"，交互不同，
+   外观必须一样，否则同一个站在两个页面上看是两样东西。
+
+   两处不能省的例外：
+   1) 容器 pointer-events:none、只有刻度 auto。底栏压在画布(z-index 1)上面，
+      不这么做，从底栏【空白处】起手拖动会被底栏吃掉，猫就走不动了。
+   2) fill 的 width 和刻度的 left 由 JS 每帧写，这两个属性上绝对不能加
+      transition，否则它们会从"坐标"变成"动画"（第 15 轮就是这么让纸条脱板
+      282 像素的）。主页面那边没这个问题——它是点击时写一次，不是每帧写。 */
+.roadbar{
+  position:fixed;left:20px;right:20px;bottom:14px;height:4px;z-index:20;
+  background:rgba(59,51,80,.8);pointer-events:none;
+}
+.roadbar .fill{position:absolute;left:0;top:0;height:100%;background:var(--orange);width:0}
+.roadbar .pip{
+  position:absolute;top:-6px;width:16px;height:16px;margin-left:-8px;padding:0;
+  background:var(--dusk);border:2px solid #15122a;cursor:pointer;
+  pointer-events:auto;transition:background .12s;
+}
+.roadbar .pip:hover{background:var(--amber)}
+.roadbar .pip.on{background:var(--amber);border-color:var(--amber)}
+.roadbar .pip:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.roadbar .pip b{
+  position:absolute;bottom:19px;left:50%;transform:translateX(-50%);
+  font-family:'PS2P',monospace;font-size:8px;font-weight:400;letter-spacing:.1em;
+  color:var(--stone);white-space:nowrap;opacity:0;pointer-events:none;
+  transition:opacity .12s,color .12s;
+}
+.roadbar .pip:hover b,.roadbar .pip:focus-visible b{opacity:1;color:var(--amber)}
+
+/* 标签筛选：贴在画布左上角，浮在夜空上。它是这一页唯一的控件，
+   所以要一眼看得出能点 —— 用和区域导航一样的硬边按钮 */
+.filters{
+  position:absolute;left:20px;top:64px;z-index:15;
+  display:flex;gap:7px;flex-wrap:wrap;align-items:center;
+}
+/* FILTER 这个词本身没有底色。夜里放在深色夜空上够读，换成白天的蓝天
+   就不够了 —— #6b6288 在 #4f9fd8 上几乎看不见。给它和按钮同样的深底，
+   靠边框和字色区分主次 */
+.filters .fl{
+  font-family:'PS2P',monospace;font-size:8px;letter-spacing:.1em;
+  color:var(--stone);margin-right:2px;
+  padding:7px 8px;background:rgba(20,18,28,.9);border:2px solid var(--dusk);
+}
+.filters button{
+  font-family:'PS2P',monospace;font-size:8px;letter-spacing:.06em;
+  color:#9a92b4;background:rgba(20,18,28,.9);
+  border:2px solid var(--dusk);padding:7px 10px;cursor:pointer;
+  transition:color .12s,border-color .12s,background .12s;
+}
+.filters button:hover{color:var(--amber);border-color:var(--amber)}
+.filters button[aria-pressed="true"]{color:var(--ink);background:var(--amber);border-color:var(--amber)}
+.filters button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.filters .cnt{color:var(--rust);margin-left:5px}
+
+/* 纸条的坐标每帧由 positionPlates() 写进 transform。在那之前它是
+   position:absolute 的默认位置 —— 左上角 (0,0)。不藏起来的话每次打开
+   都会先看见一张纸条闪在屏幕左上角再跳到位。visibility 在上面 #plates 那条里 */
+
+/* 告示牌上的文字。牌子的木头、钉子、纸都由 canvas 画，
+   文字交给 DOM —— canvas 画中文只能用 fillText，一画就丢掉像素感，
+   而这个站的语言恰恰是"每一个像素都硬边" */
+.plate{
+  position:absolute;left:0;top:0;z-index:10;
+  width:196px;padding:14px 15px 13px;
+  background:var(--paper);color:var(--ink);
+  border:3px solid #000;box-shadow:4px 4px 0 rgba(0,0,0,.55);
+  text-decoration:none;cursor:pointer;
+  /* transform 必须从 transition 里拿掉。它现在是这张纸条的【定位本身】，
+     每帧被 positionPlates() 重写一次；而木框是 canvas 瞬时画的，没有过渡。
+     留着 transform 过渡 = 纸条每次换位置都用 .08s 慢慢追，木框已经到了、
+     纸条还在后面 —— 相机一移动，纸就从木板上滑开，越走越偏。
+     steps(2) 让它只有 0 和 1 两帧，视觉上就是"啪地歪一下再回来"。
+     另一个后果：prefers-reduced-motion 会把 transition 整个关掉，
+     所以这个 bug 在所有"开着减弱动效"的截图里都测不出来。 */
+  transition:box-shadow .08s steps(2),opacity .2s;
+  will-change:transform;
+}
+/* hover 只能动投影，不能动 transform —— element 的 transform 现在是
+   它的定位本身（每帧由 plateRect() 写成 translate(x,y)）。这里再叠一个
+   translate(-2px,-2px)，纸条就会从木板上跳开两像素 */
+.plate:hover{box-shadow:6px 6px 0 rgba(0,0,0,.55)}
+.plate:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.plate .date{
+  font-family:'PS2P',monospace;font-size:8px;letter-spacing:.08em;
+  color:#5a5470;margin:0 0 6px;
+}
+.plate h3{margin:0 0 6px;font-size:17px;line-height:1.35;font-weight:800;color:var(--ink)}
+.plate .dsc{margin:0 0 9px;font-size:12.5px;line-height:1.55;color:#3a3450}
+.plate .m{font-size:11px;color:#5a5470;display:flex;align-items:center;gap:7px}
+.plate .lab{
+  font-family:'PS2P',monospace;font-size:7px;letter-spacing:.06em;
+  padding:2px 5px;border:1px solid var(--ink);color:var(--ink);
+}
+.plate .lab.bug{border-color:var(--rust);color:var(--rust)}
+.plate .go{
+  position:absolute;right:13px;bottom:11px;
+  font-family:'PS2P',monospace;font-size:9px;color:var(--rust);
+}
+/* 被筛掉的牌子：木框还在，纸条被抽走了。牌子的位置不动、相机不跳，
+   猫照样走过去 —— 走过的路上只剩它要看的那一类，这才是"筛选"该有的手感。
+   同样不能写 transform：定位就靠它，"抽走"用透明度表达 */
+.plate.off{opacity:0;pointer-events:none}
+
+/* 空了的时候（一个标签都没有文章） */
+.empty{
+  position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);z-index:12;
+  padding:20px 26px;text-align:center;
+  background:var(--ink-2);border:var(--edge) dashed var(--stone);
+  font-family:'PS2P',monospace;font-size:10px;letter-spacing:.1em;color:var(--amber);
+  display:none;
+}
+.empty.on{display:block}
+
+@media (max-width:860px){
+  .filters{left:12px;top:56px;gap:6px}
+  .filters .fl{display:none}
+  .plate{width:168px;padding:11px 12px 10px}
+  .plate h3{font-size:15px}
+  .plate .dsc{font-size:11.5px}
+  /* 窄屏让区导航独占一行。HUD 的子项都写了 flex-shrink:0（那是给品牌和时钟
+     用的），区导航于是挤不下也不肯缩，一到 390px 宽 FAR SHORE 就被切掉一截
+     而不是换行。给足整行宽度，它自己内部会折行，谁都不会被切。 */
+  .hud .znav{margin-left:0;width:100%;justify-content:flex-start}
+  /* 跟 site.css 的窄屏覆盖保持一致：底栏两边收窄、离底近一点 */
+  .roadbar{left:12px;right:12px;bottom:10px}
+}
+</style>
 </head>
-<style>
-body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;padding: 45px;font-size: 16px;font-family: sans-serif;line-height: 1.25;}
-#header{display:flex;padding-bottom:8px;border-bottom: 1px solid var(--borderColor-muted, var(--color-border-muted));margin-bottom: 16px;}
-#footer {margin-top:64px; text-align: center;font-size: small;}
+<body data-active="1">
 
-</style>
+<canvas id="cView"></canvas>
+<!-- 猫单独一层，画在纸条【上面】。告示牌是立在路边的，猫走在路前面，
+     走过去时应该从牌子前经过；共用一张画布的话猫会从牌子后经过，
+     一半路程整个消失在纸条后面，移动特效等于白做。 -->
+<canvas id="cCat"></canvas>
 
-<style>
-.tagTitle{margin:auto 0;font-size:40px;font-weight:bold;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
-.title-right{display:flex;margin:auto 0 0 auto;}
-.title-right .circle{padding: 14px 16px;margin-right:8px;}
+<header class="hud">
+  <a class="brand" id="brand" href="index.html">F1YINGCAT</a>
+  <div class="zone-name"><span class="zone-en">ARCHIVE</span><span>归档</span></div>
+  <time class="clock" id="clock" aria-label="当前日期和时间"></time>
+  <nav class="znav" id="znav" aria-label="区域"></nav>
+</header>
 
-.subnav-search{width:222px;margin-top:8px;margin-right:8px;}
-.subnav-search-input{width:160px;border-top-right-radius:0px;border-bottom-right-radius:0px;}
-.subnav-search button{padding:5px 8px;border-top-left-radius:0px;border-bottom-left-radius:0px;}
+<div class="filters" id="filters" role="group" aria-label="按标签筛选"></div>
 
-.SideNav-icon{margin-right:16px}
-.Label{color: #fff;margin-left:4px;}
-#taglabel .Label {margin-bottom:8px;}
-.Counter{color:#fff;background-color:rgba(234, 238, 242, 0.5)}
+<div class="empty" id="empty">NO POSTS UNDER THIS TAG</div>
 
-.genTime{float: right;}
-.d-flex{min-width:0;}
-.listTitle{overflow:hidden;white-space:nowrap;text-overflow: ellipsis;max-width: 100%;}
-.listLabels{white-space:nowrap;}
+<div id="plates"></div>
 
-@media (max-width: 600px) {
-    body { padding: 8px;}
-    .tagTitle{display:none;}
-    .LabelTime{display:none;}
-}
-</style>
+<!-- 底栏：这一页的阅读进度，每篇文章一个可点的刻度。
+     这里原本挂的是 .track（四个分区方块，点一下回首页对应区）。换成这一条是因为
+     四个方块回答的是"我在站点的哪一区"，那是首页的语言；归档页底下该回答的是
+     "这篇路走完了没有、现在第几篇、点一下能到哪一篇"。
+     两条都是可点的，只是刻度对应的内容不同。 -->
+<nav class="roadbar" id="roadbar" aria-label="文章进度"></nav>
 
-
-<body>
-    <div id="header">
-<span class="tagTitle"><span>Loading</span><span class="AnimatedEllipsis"></span></span>
-<div class="title-right">
-    <div class="subnav-search">
-        <input type="search" class="form-control subnav-search-input float-left" aria-label="Search site" value="" style="height:32px;">
-        <button class="btn float-left" type="submit" onclick="javascript:searchShow()">搜索</button>
-        <svg class="subnav-search-icon octicon octicon-search" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-            <path id="searchSVG" fill-rule="evenodd"></path>
-        </svg>
-    </div>
-    <a href="https://F1yingCat.github.io" id="buttonHome" class="btn btn-invisible circle" title="首页">
-        <svg class="octicon" width="16" height="16">
-            <path id="pathHome" fill-rule="evenodd"></path>
-        </svg>
-    </a>
-    <a class="btn btn-invisible circle" onclick="modeSwitch()" title="切换主题">
-        <svg class="octicon" width="16" height="16" >
-            <path id="themeSwitch" fill-rule="evenodd"></path>
-        </svg>
-    </a>
-</div>
-</div>
-    <div id="content">
-<div id="taglabel" style="margin-bottom:8px;"></div>
-<nav class="SideNav"></nav>
-<div class="notFind" style="display:none;font-size:24px;margin:8px;">Not Find</div>
-</div>
-    <div id="footer"><div id="footer1">Copyright © <span id="copyrightYear"></span> <a href="https://F1yingCat.github.io">Blog Title</a></div>
-<div id="footer2">
-    <span id="runday"></span><span>Powered by <a href="https://meekdai.com/Gmeek.html" target="_blank">Gmeek</a></span>
-</div>
-
+<script src="assets/posts.js"></script>
+<script src="assets/sprite.js"></script>
+<script src="assets/site.js"></script>
 <script>
-var now=new Date();
-document.getElementById("copyrightYear").innerHTML=now.getFullYear();
+/* ============================================================
+   归档页：一条横着走的夜路，文章是立在路边的告示牌
+   ------------------------------------------------------------
+   为什么归档页也做成横版，而文章页不做：
+   归档天然就是"路" —— 一排牌子从身边掠过，相机往右走就等于
+   往回翻旧文章，这个动作和"读"是反的，所以卷轴不会碍事。
+   文章页是拿来读的，那一页要留给眼睛一条竖着的线。
 
-if(""!=""){
-    var startSite=new Date("");
-    var diff=now.getTime()-startSite.getTime();
-    var diffDay=Math.floor(diff/(1000*60*60*24));
-    document.getElementById("runday").innerHTML="网站运行 "+diffDay+" 天"+" • ";
-}
-</script></div>
+   世界只有一区（一条路），不做首页那三段过渡带：
+   过渡带是为"从一个场景走到另一个场景"存在的，
+   归档只有一个场景，造三段过渡就是纯粹的空转。
+   保留的是三样语言：同一块路面、同一批星星、同一只猫。
+   ============================================================ */
+(function(){
+  'use strict';
+
+  /* 文章清单来自 assets/posts.js —— 由 out/genposts.ps1 从 blogBase.json
+     的 postListJson 生成。之前这里是手写数组，和首页 index.html、文章页
+     post.js 各存一份，加一篇要手工改三处，漏一处就是"首页有、归档页没有"。
+     板子数量、世界长度、底栏刻度全都按这个数组的长度算，数组一变全场跟着变。 */
+  var POSTS = window.POSTS || [];
+  if(!POSTS.length){
+    /* 清单空 = 生成物没到位。这里必须直接 return：下面
+       WORLD_W 要读 POSTS[POSTS.length-1].x，空数组会算出 NaN，
+       于是世界宽度、相机边界、底栏刻度一起废掉，页面变成半吊子。
+       宁可整页给一句明确的错，也不要安静地渲染一个空世界。 */
+    var e=document.getElementById('empty');
+    e.classList.add('on');
+    e.textContent='文章清单没加载到：assets/posts.js 缺失或为空。它是生成物，请先跑 out/genposts.ps1';
+    return;
+  }
+
+  /* ---- 世界尺寸 ---- */
+  var GROUND=190, WORLD_H=300;
+  var FIRST_X=500, GAP=340;                 /* 牌子中心间距 */
+  POSTS.forEach(function(p,i){ p.x=FIRST_X+i*GAP; });
+  var WORLD_W=Math.round(POSTS[POSTS.length-1].x+GAP*1.2);
+  /* 纸条尺寸只作兜底：真实尺寸一律用 measurePlates() 量 DOM。
+     写死的值在宽屏上勉强对得上，窄屏有媒体查询改宽、高度还随行数变。 */
+  var PLATE_W=196, PLATE_H=118;
+  var PX_PER_UNIT=2;                        /* 画布上 1 世界单位 = 2 画布像素，牌子才够大 */
+
+  var view={cv:null,ctx:null,catCv:null,catCtx:null,S:1,camX:0,viewW:480,vw:0,vh:0,destY:0,groundY:0};
+  var RM=window.matchMedia?matchMedia('(prefers-reduced-motion: reduce)'):{matches:false};
+
+  /* 猫：和首页同一套脾气 —— 没人管就自己走走停停，滚轮/拖动/方向键都算人工操作。
+     这一页没有"跑过去某个点"的需求（牌子是点出来的，不是跑过去的），
+     所以只有慢走，没有 340/s 的奔跑态。
+     ph 是弹跳的相位、blinkNext/blinkUntil 是眨眼，都是为了"移动特效"服务的 */
+  var cat={x:FIRST_X-160, dir:1, ph:1.2, idle:0, pause:0, pauseLim:2.4,
+           nap:0, napLim:9, asleep:false, hurry:false, blinkNext:1800, blinkUntil:0};
+  var filter='all';
+  var keys={left:false,right:false}, drag=false, dragAt=0, dragCat=0;
+
+  function zoneOf(x){ return Math.max(0,Math.min(POSTS.length-1,Math.round((x-FIRST_X)/GAP))); }
+  function pass(i){ return filter==='all' || POSTS[i].lab===filter; }
+  function firstMatch(){
+    for(var i=0;i<POSTS.length;i++) if(pass(i)) return POSTS[i].x;
+    return null;
+  }
+
+  function layout(){
+    var vw=window.innerWidth, vh=window.innerHeight;
+    var S=Math.max(1,Math.floor(Math.min(vh/230, vw/340)));
+    view.S=S; view.vw=vw; view.vh=vh;
+    view.viewW=vw/S;
+    view.groundY=Math.round(vh*0.72);
+    view.destY=view.groundY/S-GROUND;
+    view.cv.width=vw; view.cv.height=vh;
+    view.cv.style.width=vw+'px'; view.cv.style.height=vh+'px';
+    view.catCv.width=vw; view.catCv.height=vh;
+    /* 视口跨过 860px 那条媒体查询时纸条宽度会变，所以每次 resize 都要重量一次 */
+    if(plateEls.length) measurePlates();
+  }
+
+  /* 筛选条的位置跟着 HUD 的实际高度走。
+     两个坑叠在一起：HUD 是 flex-wrap 的，宽屏一行、窄屏区导航折行；
+     而且区导航是 site.js 在 DOMContentLoaded 里才塞进去的 —— 在那之前
+     HUD 只有品牌和时钟，高 34，塞完变成 71。所以在 layout() 里量一次是不够的
+     （实测：量到 34，写下 top:40px，结果筛选条和区导航完全重合）。
+     ResizeObserver 正是盯尺寸变化用的，它不管变化是谁引起的。 */
+  function fitFilters(){
+    var hud=document.querySelector('.hud'), fl=document.getElementById('filters');
+    if(!hud || !fl) return;
+    fl.style.top=(hud.offsetHeight+6)+'px';
+  }
+  if(window.ResizeObserver){
+    var hudEl=document.querySelector('.hud');
+    if(hudEl) new ResizeObserver(fitFilters).observe(hudEl);
+  }
+  addEventListener('resize',fitFilters);
+
+  /* ================= 画世界 =================
+     白天草原。世界结构和夜里那版一样（远景 0.4x + 主层 1.0x），
+     换的是画什么：夜空和档案架换成天空、草坡和土路。
+
+     两条硬规矩从头到尾没变：
+       1. 颜色一档一档，不做渐变 —— 渐变会把档与档之间那道硬边糊掉，
+          而这个站的像素感就靠那道边撑着。
+       2. S 是 Math.floor 出来的整数，世界坐标乘 S 落在整数设备像素上，
+          所以下面画的每个矩形都必须是整数。 */
+  var SKY_TOP='#4f9fd8', SKY_MID='#79bde9', SKY_LOW='#a9d9f3';
+  var FIELD={far:'#8ec47a', mid:'#6faa5c', near:'#5c9649'};
+  var NEAR ={u1:'#3f7a30', u2:'#2f5d24'};
+  var DIRT ={lip:'#cbb083', face:'#b0925f', f2:'#99794b', edge:'#7d6039'};
+  var WOOD ={face:'#8a6136', f2:'#6f4c28', edge:'#53371b', leg:'#5e3f20', legHi:'#7f5731'};
+
+  /* 路：猫踩着的那一条。上下各留一档受光边，路才不会读成"一条贴在地上的色带" */
+  var PATH_TOP=GROUND-5, PATH_BOT=GROUND+3;
+
+  function build(){
+    var cv=document.createElement('canvas');
+    cv.width=WORLD_W; cv.height=WORLD_H;
+    var g=cv.getContext('2d');
+    g.imageSmoothingEnabled=false;
+
+    /* 主层只画路。前景草不在这里画 —— 它在屏幕空间（drawFore），
+       两边都画会在路的下沿撞出一条色差接缝。原因是主层那块世界画布
+       只有 300 高，S=1 时只够铺到视口的 62%，底下那一截必须另外补。 */
+    /* --- 路沿上下的草皮：各三像素，夹住路 --- */
+    g.fillStyle=FIELD.near; g.fillRect(0,PATH_TOP-3,WORLD_W,3);
+    g.fillStyle=FIELD.mid;  g.fillRect(0,PATH_TOP-6,WORLD_W,3);
+    g.fillStyle=FIELD.mid;  g.fillRect(0,PATH_BOT+1,WORLD_W,2);
+    g.fillStyle=NEAR.u1;    g.fillRect(0,PATH_BOT+3,WORLD_W,2);
+
+    /* --- 土路 --- */
+    g.fillStyle=DIRT.face; g.fillRect(0,PATH_TOP,WORLD_W,PATH_BOT-PATH_TOP);
+    g.fillStyle=DIRT.f2;   g.fillRect(0,PATH_TOP+2,WORLD_W,PATH_BOT-PATH_TOP-4);
+    g.fillStyle=DIRT.lip;  g.fillRect(0,PATH_TOP,WORLD_W,1);     /* 上沿受光 */
+    g.fillStyle=DIRT.edge; g.fillRect(0,PATH_BOT-1,WORLD_W,1);   /* 下沿压边 */
+    /* 两道错开的车辙，路面才不是一整块 */
+    g.fillStyle=DIRT.f2;
+    for(var t=0;t<WORLD_W;t+=30){
+      g.fillRect(t,PATH_TOP+2,14,1); g.fillRect(t+15,PATH_BOT-3,12,1);
+    }
+    /* 砂砾 */
+    for(var p=0;p<Math.floor(WORLD_W/7);p++){
+      var px=(p*104729)%WORLD_W, py=PATH_TOP+1+((p*13)%(PATH_BOT-PATH_TOP-2));
+      g.fillStyle=(p%2)?'#c2a06a':'#8a6d43';
+      g.fillRect(px,py,1+((p*3)%2),1);
+    }
+
+    /* 远景不再是一块预渲染的画布。
+       原来山和草甸画在 0.4x 的远景层里、尺寸是固定的世界单位 —— S=1 的
+       窄屏上视口有 900 高、世界只有 300，山就缩成天上一个小土包，
+       下面六百像素全是空天。改成在屏幕空间按 horizon 的比例排版，
+       任何视口比例下构图都一样。 */
+    return {main:cv};
+  }
+
+  var W=build();
+
+  /* 云：放在屏幕空间画，不进远景层。远景是 0.4x，云跟着它跑太快，不像云 */
+  var CLOUD_TILE=520;
+  var CLOUDS=[];
+  (function(){
+    for(var i=0;i<5;i++){
+      var h=(i*2654435761)>>>0;
+      CLOUDS.push({x:(h>>>4)%CLOUD_TILE, yf:0.07+(((h>>>13)%100)/100)*0.22,
+                  w:54+((h>>>7)%46), h:9+((h>>>17)%7)});
+    }
+  })();
+
+  /* 前景草叶。x 是【世界坐标】，所以画的时候减 camX 乘 S 就能跟着相机走。
+     数量跟着 WORLD_W 走：文章变多世界变长，草也跟着长满整条路 */
+  var TUFTS=[];
+  (function(){
+    var n=Math.ceil(WORLD_W/14);
+    for(var i=0;i<n;i++){
+      var h=(i*2654435761)>>>0;
+      TUFTS.push({x:(i*14)+((h>>>5)%9),
+                  y:0.06+(((h>>>11)%100)/100)*0.90,
+                  h:3+((h>>>7)%6),
+                  c:((h>>>3)%3===0)?FIELD.far:((h>>>3)%3===1)?FIELD.mid:NEAR.u1});
+    }
+  })();
+  /* ================= 猫 =================
+     移动特效。精灵只有三张（cat24 / cat24_blink / cat24_sleep），没有走路帧——
+     曾经给走和跑各画过四帧带腿的精灵，用户看过说还是原来这个好：像素体量小、
+     身形不散，腿只有 5 行、放大后反而像贴纸。移动感因此全靠
+     【前倾 + 上下弹 + 拉伸压缩 + 扬尘 + 眨眼】表达，和首页同一套做法。
+     这一页原来只有一张精灵贴着地滑过去，远看就是一张会动的贴纸，看不出在走。
+
+     减少动效时全部归零：猫仍然会走到该去的位置（那是功能），但不再弹跳、
+     倾斜、形变。画布上的运动完全不受 CSS transition 管辖，所以只关
+     transition 是不够的，JS 里必须真的判断 RM.matches。 */
+  var dust=[];
+
+  /* 扬尘：x 是相对猫的偏移，朝身后飞 —— 往左走就往右扬 */
+  function puff(dir){
+    var d=dir||1, p=[];
+    for(var i=0;i<5;i++) p.push({x:d*-i*2.2, y:0, vx:d*(-0.9-i*0.25)});
+    dust.push({p:p, age:0});
+  }
+
+  function drawCat(g,S,ox,oy,now,dt){
+    var PALX=window.PIX;
+    var sitting = cat.asleep || (!cat.moving && cat.pause>0.7);
+    var nm = sitting ? 'cat24_sleep'
+           : (!RM.matches && now<cat.blinkUntil ? 'cat24_blink' : 'cat24');
+    var running = keys.left||keys.right||drag||(cat.hurry&&cat.moving);
+    var anim = cat.moving && !RM.matches;
+    /* 上下弹：正弦，最高点按"跑/走"给不同幅度 */
+    var hopN = anim ? Math.max(0, Math.sin(now*(running?0.013:0.009)+cat.ph)) : 0;
+    var hop  = hopN*(running?4.2:1.6)*Math.PI;
+    /* 前倾 + 落地压扁/空中拉长。横版里没这个就不像在动 */
+    var lean = anim ? (running?0.14:0.06)*cat.dir : 0;
+    var air  = 1-hopN, sq=air*air*air;
+    var sxK  = anim ? 1+0.10*hopN-0.10*sq : 1;
+    var syK  = anim ? 1-0.10*hopN+0.10*sq : 1;
+    var feetX=ox, feetY=oy-hop;
+
+    if(anim && Math.random()<(running?0.20:0.05)) puff(cat.dir);
+
+    g.save();
+    g.translate(feetX, feetY);
+    g.rotate(lean);
+    g.scale(sxK, syK);
+    g.translate(-feetX, -feetY);
+    if(cat.dir<0 && !sitting){
+      g.save(); g.translate(ox,0); g.scale(-1,1);
+      PALX.drawSprite(g,nm,0,feetY-44,PX_PER_UNIT); g.restore();
+    } else {
+      PALX.drawSprite(g,nm,ox,feetY-44,PX_PER_UNIT);
+    }
+    g.restore();
+
+    /* 影子：弹得越高越小越淡，否则猫会像贴在地上 */
+    var sw=Math.max(3,Math.round(9-hop*0.5));
+    g.fillStyle='rgba(24,18,10,.30)'; g.fillRect(feetX-sw, feetY+1, sw*2, 1);
+    g.fillStyle='rgba(24,18,10,.18)'; g.fillRect(feetX-sw-1, feetY+2, sw*2+2, 1);
+
+    /* 扬尘 */
+    for(var d2=dust.length-1;d2>=0;d2--){
+      var o=dust[d2]; o.age+=dt;
+      if(o.age>0.55){ dust.splice(d2,1); continue; }
+      for(var i3=0;i3<o.p.length;i3++){
+        var q=o.p[i3]; q.x+=q.vx*dt*14; q.y-=dt*9;
+        var a=1-o.age/0.55;
+        g.fillStyle='rgba(206,190,158,'+a.toFixed(2)+')';
+        g.fillRect(Math.round(feetX+q.x), Math.round(feetY+q.y), 1, 1);
+      }
+    }
+  }
+
+  /* ================= 底部进度条 =================
+     这一页自己的进度条：走过多少 + 点刻度走到指定的那块板子底下。
+
+     和首页那条的区别只在一处：首页的四个方块跳的是【站点的四个区】，
+     这里每篇文章一个刻度，点一下是【走到那块板子底下】。都是可点的进度条，
+     回答的却是各自的页面 —— 上一版把它做成完全不可点，是矫枉过正：
+     "不该跳首页"和"不该能点"是两件事。
+
+     做成 DOM 而不是画在 canvas 上：可点就意味着要能 Tab 到、要能读屏、
+     要有真的 button 语义。代价是每帧要更新 fill 的 width 和刻度的 left，
+     所以这两个属性上【绝对不能加 transition】—— 那正是第 15 轮让
+     纸条脱板 282 像素的元凶：定位由 JS 每帧写入的属性，transition
+     会把它变成动画。 */
+  var roadFill=null, roadTicks=[];
+  function buildRoadBar(){
+    var host=document.getElementById('roadbar');
+    host.innerHTML='<div class="fill"></div>'+POSTS.map(function(p,i){
+      return '<button class="pip" type="button" data-i="'+i+'"'+
+             ' title="'+p.cn+'（'+p.date+'）"'+
+             ' aria-label="走到 '+p.cn+'"><b>'+p.cn+'</b></button>';
+    }).join('');
+    roadFill=host.querySelector('.fill');
+    roadTicks=host.querySelectorAll('.pip');
+    host.addEventListener('click',function(e){
+      var b=e.target.closest('.pip');
+      if(b) gotoPost(+b.dataset.i);
+    });
+  }
+
+  /* 点刻度 = 让猫跑到那块板子底下，相机跟着它一起过去。
+     不用瞬移：这一页猫是主角，瞬移会把走过去这个动作整个吃掉。
+     hurry 让它用 340/s 的奔跑速度而不是平时 40/s 的散步——三篇之间隔 840
+     单位，散步要 21 秒，点一下然后干等 21 秒是不能接受的 */
+  function gotoPost(i){
+    var p=POSTS[i]; if(!p) return;
+    cat.tgt=p.x; cat.hurry=true;
+    cat.idle=2.3;            /* 刚好越过 2.2 的门槛，立刻起步 */
+    cat.pause=0; cat.pauseLim=1.4+Math.random()*3.2;
+    cat.asleep=false; cat.nap=0;
+  }
+
+  function updateRoadBar(){
+    if(!roadFill) return;
+    var maxCam=Math.max(1, WORLD_W-view.viewW);
+    var p=Math.max(0, Math.min(1, view.camX/maxCam));
+    roadFill.style.width=(p*100).toFixed(3)+'%';
+    var best=1e9, cur=-1, i, t;
+    for(i=0;i<POSTS.length;i++){
+      if(Math.abs(cat.x-POSTS[i].x)<best){ best=Math.abs(cat.x-POSTS[i].x); cur=i; }
+    }
+    for(i=0;i<roadTicks.length;i++){
+      t=Math.max(0, Math.min(1, (POSTS[i].x-view.viewW*0.34)/maxCam));
+      /* 刻度用【left 百分比】而不是 transform：left 没有默认过渡，
+         上一行那句"不能加 transition"在这里落实成"连 transform 都不用" */
+      roadTicks[i].style.left=(t*100).toFixed(3)+'%';
+      /* 只留一个高亮态，和主页面 .pip.on 同一个口径。走过哪几个交给橙色
+         填充条去表达，不再另发明一个 done 色——两个页面用同一套视觉语言，
+         比在这边多加一个状态更要紧。
+         必须用 classList.toggle 而不是 className=：赋值是【整体替换】，
+         会把 class="pip" 一起抹掉，按钮当场退回浏览器默认样式（白底大字），
+         连点击处理里的 closest('.pip') 都会匹配不上。 */
+      roadTicks[i].classList.toggle('on', i===cur);
+    }
+  }
+
+  /* ================= 每帧 ================= */
+  var lastT=0, rafGen=0, paused=false;
+
+  function frame(now){
+    var c=view.ctx, S=view.S;
+    if(!lastT) lastT=now;
+    var dt=(now-lastT)/1000; lastT=now;
+    if(!(dt>0)) dt=0.016;
+    if(dt>0.05) dt=0.05;
+
+    /* --- 人工输入 --- */
+    var userActed=false;
+    if(keys.left){ cat.x-=120*dt; cat.dir=-1; userActed=true; }
+    if(keys.right){ cat.x+=120*dt; cat.dir=1; userActed=true; }
+    /* 拖动在 wire() 里直接写 cat.x，这里只负责把它记成一次人工操作 */
+    if(drag){ userActed=true; }
+    if(userActed){ cat.idle=0; cat.pause=0; cat.nap=0; cat.asleep=false;
+                   cat.tgt=null; cat.hurry=false; } else cat.idle+=dt;
+
+    /* 眨眼：随机间隔、随机时长。睡着了不眨 */
+    if(!cat.asleep && now>cat.blinkNext){
+      cat.blinkUntil=now+90;
+      cat.blinkNext=now+2200+Math.random()*3800;
+    }
+
+    /* --- 猫自己走走停停 --- */
+    var moving=false;
+    if(cat.asleep){
+      cat.nap+=dt;
+      if(cat.nap>cat.napLim){ cat.asleep=false; cat.nap=0; cat.idle=0.2; }
+    } else if(cat.idle>2.2){
+      if(cat.tgt===null || cat.tgt===undefined){
+        /* 巡逻目标从【当前筛选下可见的牌子】里挑，夹在两块牌之间。
+           这样筛完之后猫还是在有牌子的那段路上走，不会晃到空地上 */
+        var pool=[];
+        for(var i=0;i<POSTS.length;i++){ if(pass(i)) pool.push(POSTS[i].x); }
+        if(!pool.length) pool=[FIRST_X];
+        var lo=Math.max(120,pool[0]-150), hi=Math.min(WORLD_W-60,pool[pool.length-1]+150);
+        cat.tgt=lo+Math.random()*Math.max(1,hi-lo);
+        cat.pause=0; cat.pauseLim=1.4+Math.random()*3.2;
+      } else {
+        var pd=cat.tgt-cat.x;
+        if(Math.abs(pd)<4){
+          cat.x+=pd; cat.pause+=dt; cat.hurry=false;
+          if(cat.pause>cat.pauseLim){
+            cat.tgt=null; cat.pause=0;
+            if(cat.idle>34){ cat.asleep=true; cat.nap=0; cat.napLim=7+Math.random()*5; }
+          }
+        } else {
+          /* hurry 是点刻度来的那一次急活，跑 340/s；平时还是 40/s 的散步 */
+          cat.x+=(pd>0?1:-1)*Math.min(Math.abs(pd),(cat.hurry?340:40)*dt);
+          cat.dir=pd<0?-1:1; moving=true;
+        }
+      }
+    }
+    cat.moving=moving;
+    if(cat.asleep) cat.moving=false;
+    if(cat.x<60) cat.x=60;
+    if(cat.x>WORLD_W-40) cat.x=WORLD_W-40;
+
+    /* --- 相机 --- */
+    var maxCam=Math.max(0, WORLD_W-view.viewW);
+    var goal=Math.max(0,Math.min(maxCam, cat.x-view.viewW*0.34));
+    view.camX += (goal-view.camX)*(1-Math.pow(1-0.14, dt*60));
+    if(RM.matches) view.camX=goal;
+    if(view.camX<0) view.camX=0;
+    if(view.camX>maxCam) view.camX=maxCam;
+
+    /* --- 画 ---
+       这一段有三套坐标，别混：
+         屏幕空间 —— 天空、云、太阳、前景草、木板、纸条（DOM）
+         世界空间 —— 远景层、主层（路）、猫
+       上一版木板在世界空间里 Math.round、纸条在屏幕空间里 Math.round，
+       camX 每帧变，两边就每帧差一个像素，木板在纸条边上抖。
+       现在两边共用 plateRect() 一个来源，结构上不可能再错开。 */
+    var DY=view.destY;
+    var horizon=Math.round((GROUND+DY)*S);   /* 地平线的屏幕 y */
+    c.setTransform(1,0,0,1,0,0);
+    c.imageSmoothingEnabled=false;
+    /* 兜底：万一某一档算下来底下露了一条，颜色也是草，不是黑边 */
+    c.fillStyle=FIELD.near; c.fillRect(0,0,view.vw,view.vh);
+
+    /* 天空：三档色带，每档之间一道分界线。不做渐变 —— 渐变会把那道
+       边糊掉，而这个站的像素感就靠它撑着 */
+    var b1=Math.round(horizon*0.40), b2=Math.round(horizon*0.72);
+    c.fillStyle=SKY_LOW; c.fillRect(0,b2,view.vw,horizon-b2);
+    c.fillStyle=SKY_MID; c.fillRect(0,b1,view.vw,b2-b1);
+    c.fillStyle=SKY_TOP; c.fillRect(0,0,view.vw,b1);
+    drawHills(c,horizon);
+    drawSky(c,horizon,S);
+    drawFore(c,horizon,S);
+
+    /* 主层 1.0x：只有那条土路。把 DY 放进变换，drawImage 的 y 就传 0。
+       猫画在同一个变换里，不用再手动补一次偏移 */
+    c.save();
+    c.setTransform(S,0,0,S,0,DY*S);
+    c.drawImage(W.main, -view.camX, 0);
+    c.restore();
+
+    /* 猫画在它自己那一层上，z-index 在纸条之上 */
+    var cc=view.catCtx;
+    cc.setTransform(1,0,0,1,0,0);
+    cc.clearRect(0,0,view.vw,view.vh);
+    cc.imageSmoothingEnabled=false;
+    cc.setTransform(S,0,0,S,0,DY*S);
+    drawCat(cc, S, cat.x-view.camX, GROUND, now, dt);
+
+    drawBoards(c,S);
+    positionPlates();
+    updateRoadBar();
+
+    schedule();
+  }
+
+  /* 远山和山脚的草甸。画在屏幕空间，纵向按 horizon 取比例、横向 0.4x 视差。
+     逐列算高度再【量化到台阶】，轮廓因此是硬边阶梯而不是斜线 ——
+     斜线在这个站里读成"划痕"（首页的引线为这件事专门改成直角）。
+     抛物线只用来定高度，一个像素都没画成线。 */
+  function drawHills(c,horizon){
+    var base=horizon-Math.round(horizon*0.09);   /* 山脚 = 草甸顶 */
+    var mh=Math.round(horizon*0.09);
+    var tile=340;                                /* 横向循环长度（屏幕像素） */
+    var n=Math.ceil(view.vw/tile)+2;
+    var i,k;
+    for(i=-1;i<n;i++){
+      var h1=Math.round(horizon*0.30), w1=Math.round(tile*0.78);
+      var h2=Math.round(horizon*0.21), w2=Math.round(tile*0.52);
+      hill(c, i*tile+w1*0.5-Math.round(view.camX*0.4)%tile, w1, h1, base, '#7fae6d', '#5f9250');
+      hill(c, i*tile+tile*0.86-Math.round(view.camX*0.4)%tile, w2, h2, base, '#8bb878', '#679a58');
+    }
+    /* 草甸：三档，越靠近路越暗，把纵深交代出来。
+       必须一路铺到 horizon（土路的顶在 horizon-5*S），只铺到山脚的话
+       中间会漏出一条天蓝 —— 上一版就是这么漏的 */
+    var top=base-mh, mid=top+Math.round(mh*0.5), low=base+Math.round((horizon-base)*0.45);
+    c.fillStyle='#7cb469'; c.fillRect(0,top,view.vw,mid-top);
+    c.fillStyle='#68a257'; c.fillRect(0,mid,view.vw,low-mid);
+    c.fillStyle='#548f46'; c.fillRect(0,low,view.vw,horizon-low);
+    /* 草甸上的深色碎点：远处只需要"不是一块死色" */
+    for(k=0;k<Math.ceil(view.vw/7);k++){
+      var gx=(k*13-Math.round(view.camX*0.4))%view.vw; if(gx<0) gx+=view.vw;
+      c.fillStyle=(k%2)?'#5c9a4a':'#4d8a3e';
+      c.fillRect(gx, base-2-((k*11)%Math.max(6,Math.round(mh*0.85))), 1+(k%3===0?2:0), 1);
+    }
+  }
+
+  function hill(c,cx,bw,bh,base,c1,c2){
+    var half=bw/2;
+    for(var x=Math.round(cx-half);x<=cx+half;x++){
+      if(x<-2||x>view.vw+2) continue;
+      var f=1-((x-cx)/half)*((x-cx)/half);
+      if(f<=0) continue;
+      var h=Math.max(3,Math.round(bh*f/4)*4);
+      c.fillStyle=(f>0.58)?c1:c2;
+      c.fillRect(x,base-h,1,h);
+    }
+  }
+  /* 太阳和云，画在屏幕空间。不进远景层 —— 远景是 0.4x，云跟着它跑太快 */
+  function drawSky(c,horizon,S){
+    var i,k;
+    /* 太阳：一个方块加一圈浅边，不画圆。
+       y 必须压得够低：它的高度随 S 放大，而 y 只按 horizon 的比例走，
+       S=1 时 0.23 就躲开了筛选条，S=3 时半径变成三倍，正好又压回筛选条。
+       0.42 是两档都躲开的位置。x 也避开右上角的区导航。 */
+    /* 太阳：三档同心色环 + 短光芒，全部硬边。
+       上一版是"逐列算半高 + 按 f 硬切两色"，结果左右各出现一条竖直分界线，
+       远看像一颗切开的水果。改成按【到圆心的距离】分环，同一环一种颜色，
+       轮廓仍然是台阶 —— 台阶和同心环都不产生斜线。
+       逐行算每一环的半宽再整行填充，而不是逐像素 fillRect：
+       2*sr 次绘制，够快，边还是硬的。 */
+    var sr=Math.max(7,Math.round(16*S));
+    var sx=Math.round(view.vw*0.62-view.camX*0.03*S), sy=Math.round(horizon*0.42);
+    var RING0='#fff3c4', RING1='#f6cf5e', RING2='#e3ac44';   /* 内 -> 外 */
+    for(var dy=-sr;dy<=sr;dy++){
+      var u=dy/sr;
+      if(u<0) u=-u;
+      var wOut=Math.sqrt(Math.max(0,1-u*u))*sr;
+      var wMid=(u<0.76)?Math.sqrt(Math.max(0,0.76*0.76-u*u))*sr:-1;
+      var wIn =(u<0.42)?Math.sqrt(Math.max(0,0.42*0.42-u*u))*sr:-1;
+      /* 由外往内逐层覆盖，每一层都先铺满自己再被里层盖住。
+         上一版反过来写（只填到 wMid 就停），盘身中段比上下两段窄一圈，
+         底边反而外扩出来，远看是个碗。 */
+      c.fillStyle=RING2; c.fillRect(sx-Math.round(wOut), sy+dy, Math.round(wOut)*2+1, 1);
+      if(wMid>=0){ c.fillStyle=RING1; c.fillRect(sx-Math.round(wMid), sy+dy, Math.round(wMid)*2+1, 1); }
+      if(wIn >=0){ c.fillStyle=RING0; c.fillRect(sx-Math.round(wIn),  sy+dy, Math.round(wIn)*2+1,  1); }
+    }
+    /* 光芒：只留上下左右四根短条。
+       上一版还加了四个对角，但坐标不自洽（左下和右下落在了不同方向），
+       串起来在盘底拼出一个"碗"；而且对角哪怕画成虚线阶梯，斜向在这个站
+       依然读成"划痕"（首页的引线为这件事专门改成直角）。去掉更干净。 */
+    var rl=Math.max(2,Math.round(3*S)), th=Math.max(2,S);
+    c.fillStyle='#f2c65a';
+    c.fillRect(sx-Math.round(th/2), sy-sr-rl, th, rl);
+    c.fillRect(sx-Math.round(th/2), sy+sr+1,  th, rl);
+    c.fillRect(sx-sr-rl, sy-Math.round(th/2), rl, th);
+    c.fillRect(sx+sr+1,   sy-Math.round(th/2), rl, th);
+    /* 云：定义只占 CLOUD_TILE 一段，每朵在 x-TILE、x、x+TILE 各画一次，
+       相机走到哪都盖得住视口 —— 否则走到世界尽头云就没了 */
+    for(i=0;i<CLOUDS.length;i++){
+      var cl=CLOUDS[i];
+      var bx=Math.round((cl.x-view.camX*0.14)*S);
+      var by=Math.round(horizon*cl.yf)+Math.round(cl.h*S);
+      var cw=Math.max(6,Math.round(cl.w*S)), ch=Math.max(2,Math.round(cl.h*S));
+      for(k=-1;k<=Math.ceil(view.vw/S/CLOUD_TILE)+1;k++){
+        var px=bx+k*CLOUD_TILE*S;
+        if(px<-cw-20||px>view.vw+20) continue;
+        cloud(c,px,by,cw,ch);
+      }
+    }
+  }
+
+  /* 一朵云：逐列算高度、量化到 2 像素的台阶，底边压平。
+     同样不画斜线也不画圆 —— 台阶是这个站唯一允许的曲线 */
+  function cloud(c,cx,base,w,h){
+    var half=w/2;
+    for(var x=Math.round(cx-half);x<=cx+half;x++){
+      var t=(x-cx)/half, f=1-t*t;
+      if(f<=0) continue;
+      var hh=Math.max(1,Math.round(h*(0.30+f*0.70)/2)*2);
+      c.fillStyle=(f>0.52)?'#ffffff':'#dcecf7';
+      c.fillRect(x, base-hh, 1, hh);
+    }
+    c.fillStyle='#ffffff';
+    c.fillRect(Math.round(cx-half), base-1, w, 1);
+  }
+
+  /* 前景草：地平线到画布底。画在屏幕空间是因为主层那块世界画布只有
+     300 高（S=1 时只够铺到视口的 62%），底下那一截必须在这里补，
+     不然窄屏会在最下面留一条空的暗带。草叶按世界坐标定位，
+     所以还是跟着相机走，不会像贴纸一样粘在屏幕上 */
+  function drawFore(c,horizon,S){
+    var h=view.vh-horizon;
+    if(h<=0) return;
+    c.fillStyle=FIELD.mid;  c.fillRect(0,horizon,view.vw,h);
+    c.fillStyle=NEAR.u1;    c.fillRect(0,horizon+Math.round(h*0.30),view.vw,Math.round(h*0.34));
+    c.fillStyle=NEAR.u2;    c.fillRect(0,horizon+Math.round(h*0.64),view.vw,Math.ceil(h*0.36));
+    for(var i=0;i<TUFTS.length;i++){
+      var t=TUFTS[i], tx=Math.round((t.x-view.camX)*S);
+      if(tx<-4||tx>view.vw+4) continue;
+      var ty=horizon+Math.round(t.y*h);
+      c.fillStyle=t.c;
+      c.fillRect(tx,ty-t.h,1,t.h);
+    }
+  }
+
+  /* 纸条在屏幕上的矩形 —— 木板和纸条唯一的尺寸来源 */
+  function plateRect(i){
+    var P=POSTS[i], S=view.S;
+    var w=P.domW||PLATE_W, h=P.domH||PLATE_H;
+    var cx=Math.round((P.x-view.camX)*S);
+    var bottom=Math.round((GROUND+view.destY)*S)-Math.round(26*S);
+    return {x:cx-Math.round(w/2), y:bottom-h, w:w, h:h, cx:cx, bottom:bottom};
+  }
+
+  /* 木板比纸条大一圈，纸条贴在板面上 —— 像一张钉在木牌上的纸。
+     板子、支架、图钉都在屏幕空间画，尺寸全部来自 plateRect() */
+  function drawBoards(c,S){
+    var pad=Math.max(3,Math.round(7*S));
+    var lw=Math.max(2,Math.round(4*S));
+    var ground=Math.round((GROUND+view.destY)*S);
+    c.save();
+    c.setTransform(1,0,0,1,0,0);
+    for(var i=0;i<POSTS.length;i++){
+      var r=plateRect(i);
+      if(r.x+r.w+pad<-40 || r.x-pad>view.vw+40) continue;
+      var bx=r.x-pad, by=r.y-pad, bw=r.w+pad*2, bh=r.h+pad*2;
+      var on=pass(i);
+      /* 支架先画：它要被板面压住上半截，只从底下露出两截腿。
+         顺序反了背板就把支架整个盖住，牌子读成"一块浮着的板" */
+      var legTop=by+bh-lw, legH=ground-legTop+lw;
+      if(legH>0){
+        c.fillStyle=WOOD.leg;
+        c.fillRect(bx+Math.round(bw*0.24), legTop, lw, legH);
+        c.fillRect(bx+bw-Math.round(bw*0.24)-lw, legTop, lw, legH);
+        c.fillStyle=WOOD.legHi;
+        c.fillRect(bx+Math.round(bw*0.24), legTop, 1, legH);
+        c.fillRect(bx+bw-Math.round(bw*0.24)-lw, legTop, 1, legH);
+      }
+      /* 板面：内芯亮一档，四周一圈深色当厚度 */
+      c.fillStyle=on?WOOD.face:'#6b4a2f';
+      c.fillRect(bx,by,bw,bh);
+      c.fillStyle=on?WOOD.f2:'#4a3524';
+      c.fillRect(bx,by,bw,pad);
+      c.fillStyle=WOOD.edge;
+      c.fillRect(bx,by,bw,1); c.fillRect(bx,by+bh-1,bw,1);
+      c.fillRect(bx,by,1,bh); c.fillRect(bx+bw-1,by,1,bh);
+      if(on){
+        /* 板缝：横向两道，读成"三块木头拼的" */
+        c.fillStyle=WOOD.edge;
+        c.fillRect(bx+1, by+Math.round(bh*0.36), bw-2, 1);
+        c.fillRect(bx+1, by+Math.round(bh*0.68), bw-2, 1);
+        /* 图钉：纸条贴在板面上的那一个点 */
+        var n=Math.max(2,Math.round(2*S));
+        c.fillStyle='#d4ab52';
+        c.fillRect(Math.round(r.cx-n/2), by+Math.round(pad*0.4), n, n);
+      }
+    }
+    c.restore();
+  }
+
+  var plateEls=[], platesHost=document.getElementById('plates');
+  function positionPlates(){
+    for(var i=0;i<plateEls.length;i++){
+      var el=plateEls[i];
+      var r=plateRect(i);
+      var vis = r.x+r.w>-40 && r.x<view.vw+40;
+      el.style.display = vis ? '' : 'none';
+      if(!vis) continue;
+      /* 直接摆到 r.x/r.y。不用 translateY(-100%) —— 那个 -100% 依赖
+         元素自己的高度，标题一换行高度就变，板子和纸又错开了 */
+      el.style.transform='translate('+r.x+'px,'+r.y+'px)';
+    }
+    /* 第一帧摆完才让它们露面，避开左上角那一下闪帧 */
+    platesHost.style.visibility='visible';
+  }
+
+  function schedule(){
+    var g=++rafGen;
+    requestAnimationFrame(function(t){ if(g!==rafGen||paused) return; frame(t); });
+  }
+  document.addEventListener('visibilitychange',function(){
+    if(document.hidden){ paused=true; }
+    else if(paused){ paused=false; lastT=0; schedule(); }
+  });
+
+  /* ================= 牌子（DOM） ================= */
+  function buildPlates(){
+    var host=document.getElementById('plates');
+    var i,p,e;
+    for(i=0;i<POSTS.length;i++){
+      p=POSTS[i]; e=document.createElement('a');
+      e.className='plate';
+      e.href=p.href;
+      e.setAttribute('aria-label', p.cn+'（'+p.date+'）');
+      e.innerHTML=
+        '<p class="date">'+p.date+'</p>'+
+        '<h3>'+p.cn+'</h3>'+
+        '<p class="dsc">'+p.desc+'</p>'+
+        '<span class="m"><span class="lab'+(p.lab==='bug'?' bug':'')+'">'+p.lab.toUpperCase()+'</span>'+
+          '<span>'+p.words+' 词</span></span>'+
+        '<span class="go">→</span>';
+      host.appendChild(e);
+      plateEls.push(e);
+    }
+    measurePlates();
+  }
+
+  /* 纸条的真实尺寸。画在画布上的木框要贴着这张纸条，所以尺寸不能写死。
+     两个原因：
+       一是窄屏有 @media(max-width:860px) 把 width 从 196 改成 168；
+       二是高度本来就不固定——它跟着标题和摘要折几行走，实测 172~190px。
+     写死的 PLATE_W/PLATE_H 在宽屏上勉强对得上，一到窄屏就又宽又矮，
+     木框和纸条是两个尺寸。量一次比在两处各猜一个常量可靠。 */
+  function measurePlates(){
+    for(var i=0;i<plateEls.length;i++){
+      var el=plateEls[i], w=el.offsetWidth, h=el.offsetHeight;
+      if(w&&h){ POSTS[i].domW=w; POSTS[i].domH=h; }
+    }
+  }
+
+  /* ================= 标签筛选 ================= */
+  function buildFilters(){
+    var host=document.getElementById('filters');
+    var labs=['all'].concat(POSTS.map(function(p){ return p.lab; })
+      .filter(function(v,i,a){ return a.indexOf(v)===i; }));
+    host.innerHTML='<span class="fl">FILTER</span>'+labs.map(function(l){
+      var n = l==='all' ? POSTS.length : POSTS.filter(function(p){ return p.lab===l; }).length;
+      return '<button data-l="'+l+'" aria-pressed="'+(l===filter)+'">'+
+             (l==='all'?'ALL':l.toUpperCase())+'<span class="cnt">'+n+'</span></button>';
+    }).join('');
+    host.addEventListener('click',function(e){
+      var b=e.target.closest('button[data-l]'); if(!b) return;
+      filter=b.dataset.l;
+      host.querySelectorAll('button').forEach(function(x){
+        x.setAttribute('aria-pressed', x.dataset.l===filter?'true':'false');
+      });
+      applyFilter();
+    });
+  }
+  function applyFilter(){
+    var any=0;
+    for(var i=0;i<POSTS.length;i++){
+      var ok=pass(i);
+      plateEls[i].classList.toggle('off', !ok);
+      plateEls[i].setAttribute('aria-hidden', ok?'false':'true');
+      plateEls[i].tabIndex = ok?0:-1;
+      if(ok) any++;
+    }
+    document.getElementById('empty').classList.toggle('on', any===0);
+    /* 筛选一变，猫脚下的那段路也变了：把巡逻目标清掉，它会重新挑一个
+       落在"有牌子的那段"上的点，不会晃到空地上 */
+    cat.tgt=null; cat.pause=0; cat.idle=0;
+  }
+
+  /* ================= 交互 ================= */
+  function wire(){
+    var cv=view.cv;
+    addEventListener('keydown',function(e){
+      if(e.key==='ArrowLeft'||e.key.toLowerCase()==='a'){ keys.left=true; e.preventDefault(); }
+      if(e.key==='ArrowRight'||e.key.toLowerCase()==='d'){ keys.right=true; e.preventDefault(); }
+    });
+    addEventListener('keyup',function(e){
+      if(e.key==='ArrowLeft'||e.key.toLowerCase()==='a') keys.left=false;
+      if(e.key==='ArrowRight'||e.key.toLowerCase()==='d') keys.right=false;
+    });
+
+    /* 拖动要记的是【按下那一刻】的猫位置和指针位置，拖动量 = 两者之差。
+       原来每帧拿 cat.x 当基准，而 cat.x 自己还在被巡逻改着，结果是抖的 */
+    cv.addEventListener('pointerdown',function(e){
+      dragAt=e.clientX; dragCat=cat.x; drag=true;
+      cv.setPointerCapture(e.pointerId);
+    });
+    cv.addEventListener('pointermove',function(e){
+      if(!drag) return;
+      cat.x=Math.max(60,Math.min(WORLD_W-40, dragCat+(e.clientX-dragAt)/view.S));
+    });
+    cv.addEventListener('pointerup',function(){ drag=false; });
+    cv.addEventListener('pointercancel',function(){ drag=false; });
+    cv.addEventListener('wheel',function(e){
+      e.preventDefault();
+      cat.x=Math.max(60,Math.min(WORLD_W-40, cat.x+(Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY)*0.8));
+      cat.idle=0; cat.pause=0; cat.asleep=false; cat.tgt=null;
+    },{passive:false});
+  }
+
+  /* ================= 起 ================= */
+  view.cv=document.getElementById('cView');
+  view.ctx=view.cv.getContext('2d');
+  view.catCv=document.getElementById('cCat');
+  view.catCtx=view.catCv.getContext('2d');
+  layout();
+  buildPlates();
+  buildFilters();
+  buildRoadBar();
+  wire();
+  addEventListener('resize',layout);
+  schedule();
+})();
+</script>
 </body>
-<script>
-var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'search': 'M15.7 13.3l-3.81-3.83A5.93 5.93 0 0 0 13 6c0-3.31-2.69-6-6-6S1 2.69 1 6s2.69 6 6 6c1.3 0 2.48-.41 3.47-1.11l3.83 3.81c.19.2.45.3.7.3.25 0 .52-.09.7-.3a.996.996 0 0 0 0-1.41v.01zM7 10.7c-2.59 0-4.7-2.11-4.7-4.7 0-2.59 2.11-4.7 4.7-4.7 2.59 0 4.7 2.11 4.7 4.7 0 2.59-2.11 4.7-4.7 4.7z', 'post': 'M0 3.75C0 2.784.784 2 1.75 2h12.5c.966 0 1.75.784 1.75 1.75v8.5A1.75 1.75 0 0 1 14.25 14H1.75A1.75 1.75 0 0 1 0 12.25Zm1.75-.25a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25v-8.5a.25.25 0 0 0-.25-.25ZM3.5 6.25a.75.75 0 0 1 .75-.75h7a.75.75 0 0 1 0 1.5h-7a.75.75 0 0 1-.75-.75Zm.75 2.25h4a.75.75 0 0 1 0 1.5h-4a.75.75 0 0 1 0-1.5Z'};
-var utterancesLoad=0;
-
-let themeSettings={
-    "dark": ["dark","moon","#00f0ff","dark-blue"],
-    "light": ["light","sun","#ff5000","github-light"],
-    "auto": ["auto","sync","","preferred-color-scheme"]
-};
-function changeTheme(mode, icon, color, utheme){
-    document.documentElement.setAttribute("data-color-mode",mode);
-    document.getElementById("themeSwitch").setAttribute("d",value=IconList[icon]);
-    document.getElementById("themeSwitch").parentNode.style.color=color;
-    if(utterancesLoad==1){utterancesTheme(utheme);}
-}
-function modeSwitch(){
-    let currentMode=document.documentElement.getAttribute('data-color-mode');
-    let newMode = currentMode === "light" ? "dark" : currentMode === "dark" ? "auto" : "light";
-    localStorage.setItem("meek_theme", newMode);
-    if(themeSettings[newMode]){
-        changeTheme(...themeSettings[newMode]);
-    }
-}
-function utterancesTheme(theme){
-    const message={type:'set-theme',theme: theme};
-    const iframe=document.getElementsByClassName('utterances-frame')[0];
-    iframe.contentWindow.postMessage(message,'https://utteranc.es');
-}
-if(themeSettings[theme]){changeTheme(...themeSettings[theme]);}
-console.log("\n %c Gmeek last https://github.com/Meekdai/Gmeek \n","padding:5px 0;background:#02d81d;color:#fff");
-</script>
-
-<script>
-document.getElementById("pathHome").setAttribute("d",IconList["home"]);
-document.getElementById("searchSVG").setAttribute("d",IconList["search"]);
-
-tagList=[];
-labelsCount={};
-jsonData='';
-let requestJson="postList.json"
-let request=new XMLHttpRequest();
-request.open("GET",requestJson);
-request.responseType='text';
-request.send();
-request.onload=function(){
-    jsonData=JSON.parse(request.response);
-    console.log(jsonData);
-    showList(labelsCount);
-    setClassDisplay(decodeURI(window.location.hash.slice(1)));
-}
-
-function showList(labelsCount){
-    let SideNav=document.getElementsByClassName("SideNav")[0];
-    SideNav.classList.add("border");
-    let taglabel=document.getElementById("taglabel");
-
-    jsonData['labelColorDict']["All"]="#000";
-    labelsCount["All"]=0;
-    for (let key in jsonData) {
-        if (key !== 'labelColorDict' && Array.isArray(jsonData[key]['labels'])) {
-            labelsCount["All"]++;
-            for (let label of jsonData[key]['labels']) {
-                labelsCount[label] = (labelsCount[label] || 0) + 1;
-            }
-        }
-    }
-
-    let sortedLabelsList = Object.keys(labelsCount).sort((a, b) => labelsCount[b] - labelsCount[a]);
-    for (let label of sortedLabelsList) {
-        tagList.push(label);
-        let showLabels = document.createElement("button");
-        showLabels.setAttribute("class", "Label");
-        showLabels.setAttribute("style", "background-color:" + jsonData['labelColorDict'][label]+";padding:4px;");
-        showLabels.innerHTML="&nbsp;&nbsp;"+label+" ";
-        showLabels.setAttribute("onclick", "javascript:updateShowTag('" + label + "');");
-
-        let LabelNum=document.createElement("span");
-        LabelNum.setAttribute("class","Counter");
-        LabelNum.innerHTML=labelsCount[label];
-        showLabels.appendChild(LabelNum);
-        taglabel.appendChild(showLabels);
-    }
-
-    for(i in jsonData){
-        if(i!='labelColorDict'){
-            let div=document.createElement("div");
-            div.setAttribute("class","lists "+jsonData[i]['labels'].join(" "));
-            let item=document.createElement("a");
-            item.setAttribute("class","SideNav-item d-flex flex-items-center flex-justify-between");
-            item.setAttribute("href",jsonData[i]['postUrl']);
-
-            let center=document.createElement("div");
-            center.setAttribute("class","d-flex flex-items-center");
-
-            svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-            path=document.createElementNS("http://www.w3.org/2000/svg","path"); 
-            span=document.createElement("span");
-            svg.setAttributeNS(null,"class","SideNav-icon octicon");
-            svg.setAttributeNS(null,"style","width:16px;height:16px");
-            path.setAttributeNS(null, "d", IconList["post"]);
-            svg.appendChild(path);
-
-            let title=document.createElement("span");
-            title.setAttribute("class","listTitle");
-            title.innerHTML=jsonData[i]['postTitle'];
-            center.appendChild(svg);
-            center.appendChild(title);
-
-            let listLabels=document.createElement("div");
-            listLabels.setAttribute("class","listLabels");
-            
-            for(label of jsonData[i]['labels']){
-                let LabelName=document.createElement("span");
-                LabelName.setAttribute("class","Label LabelName");
-                LabelName.setAttribute("style","background-color:"+jsonData['labelColorDict'][label]);
-                LabelName.innerHTML=label;
-                listLabels.appendChild(LabelName);
-            }
-            let LabelTime=document.createElement("span");
-            LabelTime.setAttribute("class","Label LabelTime");
-            LabelTime.setAttribute("style","background-color:"+jsonData[i]['dateLabelColor']);
-            LabelTime.innerHTML=jsonData[i]['createdDate'];
-            listLabels.appendChild(LabelTime);
-
-            item.appendChild(center);
-            item.appendChild(listLabels);
-            div.appendChild(item);
-            SideNav.appendChild(div);
-        }
-    }
-}
-
-function updateShowTag(label){
-    if(window.location.hash.slice(1)!=encodeURI(label)){
-        window.location.hash="#"+(label);
-        setClassDisplay(label);
-    }
-}
-
-function setClassDisplay(label){
-    let lists = document.getElementsByClassName("lists");
-    let tagTitle = document.getElementsByClassName("tagTitle")[0];
-    tagTitle.innerHTML="Tag #"+label;
-    document.title=label+" - Blog Title";
-    document.getElementsByClassName("subnav-search-input")[0].value='';
-    if(label=="All"){
-        for(let i = 0; i < lists.length; i++){lists[i].style.display='block';}
-        document.getElementsByClassName("notFind")[0].style.display='none';
-    }
-    else if(tagList.indexOf(label)!=-1){
-        for(let i = 0; i < lists.length; i++){
-            lists[i].style.display='none';
-        }
-
-        let labels = document.getElementsByClassName(label);
-        for(let i = 0; i < labels.length; i++){
-            labels[i].style.display='block';
-        }
-        document.getElementsByClassName("notFind")[0].style.display='none';
-    }
-    else{
-        document.getElementsByClassName("subnav-search-input")[0].value=label;
-        searchShow();
-    }
-}
-
-function searchShow(){
-    let lists = document.getElementsByClassName("lists");
-    let tagTitle = document.getElementsByClassName("tagTitle")[0];
-    let searchInput = document.getElementsByClassName("subnav-search-input")[0].value;
-    tagTitle.innerHTML="Search #"+searchInput;
-    if(searchInput==''){document.title="Search - Blog Title";}
-    else{document.title=searchInput+" - Blog Title";}
-    let a=0;
-    window.location.hash="#"+(searchInput);
-    for(let i = 0; i < lists.length; i++){
-        if(lists[i].childNodes[0].childNodes[0].childNodes[1].innerHTML.toUpperCase().indexOf(searchInput.toUpperCase())==-1){lists[i].style.display='none';}
-        else{lists[i].style.display='block';a=a+1;}
-    }
-    if(a==0){
-        let notFind=document.getElementsByClassName("notFind")[0];
-        notFind.style.display='block';
-        notFind.innerHTML='Not Find "'+searchInput+'"';
-    }
-    else{document.getElementsByClassName("notFind")[0].style.display='none';}
-}
-
-</script>
-
 </html>
