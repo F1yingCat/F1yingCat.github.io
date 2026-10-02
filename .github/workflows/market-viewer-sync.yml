@@ -43,26 +43,13 @@ jobs:
 
       - name: Sync static → docs
         run: |
-          set -e
+          # 文件清单只写在 out/restore-docs.sh 一处，Gmeek.yml 也调它 ——
+          # 两边各写一份的话，总有一边漏掉某个页面，于是"一边还原、另一边又冲掉"。
+          #
+          # 本 workflow 是"有人直接 push static/"时唯一的还原路径；
+          # Gmeek 那条路已经由 Gmeek.yml 里的同名步骤在它自己 commit/deploy 之前处理了。
           mkdir -p docs
-          # 站点门户：Gmeek 每次都会重新生成 docs/index.html（文章列表），
-          # 所以必须在这一步把 static/index.html 覆盖回去，否则页面会被冲掉。
-          [ -f static/index.html ] && cp static/index.html docs/index.html
-          # 像素夜行那套页面：Gmeek 同样不认识，runAll 会用模板版覆盖它们。
-          # 漏掉任何一条，归档页和文章页就会在下次 Gmeek 跑完（每天 16:00 UTC）
-          # 悄悄退回 Primer CDN 的老样子——线上看着"没改过"，其实是每天被冲一次。
-          [ -f static/tag.html ] && cp static/tag.html docs/tag.html
-          [ -f static/rss.xml ] && cp static/rss.xml docs/rss.xml
-          if [ -d static/post ] && ls static/post/*.html >/dev/null 2>&1; then
-            mkdir -p docs/post
-            cp -f static/post/*.html docs/post/
-          fi
-          [ -f static/MarketViewer.html ] && cp static/MarketViewer.html docs/MarketViewer.html
-          [ -d static/assets ] && cp -r static/assets/. docs/assets/
-          [ -d static/data ] && cp -r static/data/. docs/data/
-          # 故意不同步的：static/fonts/（Gmeek 遗留，index.html 和 site.css 都把
-          # 字体内嵌成 base64 了，没有一个页面引用 fonts/*.woff2，搬过去只是让
-          # 部署包变大）以及 static/.sync-trigger（Mavis 的空标记文件）。
+          bash ./out/restore-docs.sh
           echo "=== docs 根 ===" && ls docs/*.html docs/*.xml
           echo "=== docs/post/ ===" && ls docs/post/
           echo "=== docs/assets/ ===" && ls docs/assets/

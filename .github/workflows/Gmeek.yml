@@ -54,17 +54,30 @@ jobs:
           cp -a /opt/Gmeek/backup ${{ github.workspace }}
           cp /opt/Gmeek/blogBase.json ${{ github.workspace }}
 
-      # 原先这里有一步 "Protect premarket.html"（git checkout HEAD -- docs/premarket.html），
-      # 用来把 Gmeek 在 runAll 模式下冲掉的那张盘前速览页捡回来。
-      # 2026-10-02 该页已主动删除、盘前速览统一到 MarketViewer.html#premarket，这一步随之删除。
+      # 把我们手工维护的页面【立刻】放回去。
       #
-      # 真正的保护网不在这份文件里，在 market-viewer-sync.yml：它在 Gmeek 跑完之后
-      # （workflow_run 触发，注释里明写"防止被它清空"）把 static/ 下的
-      # index/tag/rss/post/MarketViewer/assets/data 全量搬回 docs/。
-      # 手工维护的内容一律放 static/，由那条 workflow 负责还原。
-      # 反过来说：直接手写进 docs/ 而不放进 static/ 的文件不会有人替它兜底 ——
-      # 下一次 Gmeek 构建会静默删掉它，并被下面的 git add . / commit 提交进去。
-      # 当年 premarket.html 之所以要在这里单开一步，正是因为它是唯一的例外。
+      # 这一步以前不存在，于是每次编辑 issue 都会：Gmeek 用它自己的版本重写
+      # docs/index.html、docs/MarketViewer.html、docs/assets/render.js、docs/data/*
+      # （历史提交 6276c3c 就是这么干的），紧接着下面的 `git add . && git commit`
+      # 把重置提交进去，而本文件末尾那个 deploy job 又把重置版【发上线】。
+      #
+      # market-viewer-sync.yml 事后能修好，但那中间有个窗口重置版是活的；
+      # 更糟的是它的条件是 workflow_run.conclusion != 'failure' ——
+      # Gmeek 一失败，修复也跟着跳过，重置就留下了。
+      #
+      # 放在这里（docs 拷贝之后、commit 和 deploy 之前），重置就永远到不了
+      # git、也永远不会被发布。Gmeek 失败时本 job 直接失败，末尾的 deploy
+      # 不会跑，线上保留上一次的好版本 —— 这才是安全的失败方向。
+      #
+      # 故意不写 continue-on-error：还原失败还继续部署，等于把重置发出去。
+      #
+      # 真正的通用规则：手工维护的内容一律放 static/，由本步骤和
+      # market-viewer-sync.yml 共用的 out/restore-docs.sh 还原。
+      # 直接手写进 docs/ 而不放进 static/ 的文件不会有人替它兜底。
+      - name: Restore hand-written pages
+        run: |
+          bash ./out/restore-docs.sh
+          echo "=== docs after restore ===" && ls docs/ && ls docs/assets/ docs/data/
 
       - name: update html
         run: |

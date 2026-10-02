@@ -2744,3 +2744,41 @@ run 标红、日志里看得到报错。
 `static/post/*.html` 里没进 blogBase 的文件也并进去（标题从文件名/标题行取，
 摘要和字数留空，等 Gmeek 补全）——没做，因为那会在"刚 push、Gmeek 还没跑"
 的窗口里造出字段不全的条目。
+### 21.9 编辑 issue 会把页面整个重置 —— 治本
+
+用户报：改 GitHub issue 后 Gmeek 会把页面重置。查了机制和历史，确认属实：
+
+```
+Gmeek.yml
+  cp -a /opt/Gmeek/docs  $workspace     ← 整目录覆盖
+  git add . && git commit               ← 把重置【提交】
+  （文件末尾还有 deploy job）            ← 把重置【发上线】
+```
+
+历史提交 `6276c3c`（2026-08-27）就是证据：它改了 `docs/MarketViewer.html`、
+`docs/assets/render.js`、`docs/data/*` —— 全是我们手写、只在 `static/` 里有源头的文件。
+
+**原有的保护是有洞的**：`market-viewer-sync.yml` 靠 `workflow_run` 跟在 Gmeek 后面
+修，但（1）中间有个窗口重置版是活的，（2）它的条件是
+`workflow_run.conclusion != 'failure'` —— **Gmeek 一失败，修复也跟着跳过，重置就留下了**。
+
+**修法：把还原搬进 Gmeek 自己那条流水线**，在 docs 拷贝之后、commit 和 deploy 之前。
+重置于是既进不了 git、也发不出去。而 Gmeek 失败时本 job 直接失败、末尾的 deploy
+不跑，线上保留上一次的好版本 —— 这才是安全的失败方向。
+
+**故意不给还原步骤加 `continue-on-error`**（和上一节那个 `Regenerate posts.js`
+正好相反）：那里失败只是清单稍旧，这里失败却会把重置发上线。
+
+**文件清单只写一份**：`out/restore-docs.sh`，两条 workflow 都调它。两边各写一份的
+话总有一边漏掉某个页面，于是"一边还原、另一边又冲掉"。
+
+**验证**（拿真实 docs/ 树做，不是沙箱）：把 12 个文件冲成 `GMEEK-RESET` 标记，
+跑脚本，然后 `git diff docs/` —— **空**。即还原是逐字节成功的。
+另在沙箱里验证过语义边界：我们维护的文件还原，Gmeek 独有的产物
+（`echarts.min.js`、只存在于 docs 的文章页）原样保留。
+
+**顺带确认数据流是干净的**：`static/data/` 才是权威（每日任务的提交只碰这一侧），
+`docs/data/` 纯是镜像、只由 `sync: market-viewer from static` 改过。所以把
+`data/` 也纳入还原是安全的，不存在回退风险 —— 这也正是第一次提交时我在本地
+撞到过的那个坑（本地是 10-01、远端是 10-02），在 CI 里不会发生，因为 CI 的
+checkout 和 `static/` 那一刻是同一棵树。
