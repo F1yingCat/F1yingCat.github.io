@@ -2782,3 +2782,48 @@ Gmeek.yml
 `data/` 也纳入还原是安全的，不存在回退风险 —— 这也正是第一次提交时我在本地
 撞到过的那个坑（本地是 10-01、远端是 10-02），在 CI 里不会发生，因为 CI 的
 checkout 和 `static/` 那一刻是同一棵树。
+### 21.10 issue 怎么流到公告栏 / 文章页 / 归档（顺带挖出一个数据污染）
+
+问：新开一个 issue，Gmeek 跑一遍之后，它怎么变成公告栏上的一条、文章页、归档里的一块板子？
+
+链路（每一步都有据）：
+
+```
+issue opened/edited  ->  Gmeek.yml 触发
+  Gmeek.py --issue_number
+    ├─ backup/<title>.md          ← 文章正文落到这里（Gmeek 的源）
+    ├─ blogBase.json postListJson ← ★ posts.js 的唯一源头
+    └─ docs/post/<slug>.html      ← Gmeek 生成的页面
+  git commit + push
+  ->  market-viewer-sync（workflow_run 触发）
+        out/restore-docs.sh        static/ 盖回 docs/
+        out/genposts.ps1           blogBase.json -> docs/assets/posts.js
+  ->  pages-deploy（workflow_run 触发）-> 线上
+```
+
+**实测过"新开 issue"这条路**：模拟 Gmeek 生成 `docs/post/NEWPOST.html` + 往 blogBase 加 P4 +
+顺手重置 `docs/tag.html`，跑那两个脚本，结果 —— 新文章页**存活**（还原脚本只往 docs/post 里拷、
+从不删多余文件）、`tag.html` 被还原、`posts.js` 自动变成 4 篇并带上正确 href。✓
+也就是说新 issue 会自动出现在公告栏、归档、且点得进去。
+
+**但要提醒一件事**：现在这 3 篇文章的源有两套 ——
+`static/post/*.html`（我们手写的像素版）和 `backup/*.md`（Gmeek 的源）。
+线上实测是**我们手写那版**（2582 字节，引 `../assets/posts.js`，带 `data-art` 插画，没有 Primer）。
+所以**去改这几篇的 issue，页面不会变** —— Gmeek 确实会重新生成 `docs/post/x.html`，
+但紧接着被 `restore-docs.sh` 用 static 的版本盖回去。只有**新开 issue 建新文章**才会走 Gmeek 那版。
+
+**顺带挖出一个数据污染**：`3cdc968` 那次 Gmeek 运行往
+`backup/Origin of everything.md` **追加了一行来源链接** `[f1lyingcat.github.io](url)`，
+于是 blogBase 里那篇的 `description` 变成两行、夹着 markdown 字面量，`wordCount` 还从 29 虚增到 56。
+生成器忠实照抄，归档牌子上就会显示出 `[f1yingcat.github.io](url)` 这种东西。
+
+在 `genposts.ps1` 里加了一道 `ConvertTo-Description`：先整体丢掉"标签里带点的链接"
+（那是 Gmeek 的来源链接，把它拆开只会剩个裸域名），再解包正常的行文链接、图片、裸 URL，
+折叠换行，最后清掉 CJK 标点前被留下的空格。干跑覆盖了 6 种脏输入。
+
+`wordCount: 56` 没动 —— 那是 Gmeek 从被污染的 backup 算出来的，真实值无从得知，
+去改 `backup/*.md` 也会被下次运行覆盖。留给 Gmeek 自己纠正。
+
+**记一笔**：正则里的 CJK 标点要用 `\u3002` 这种转义写，不能直接写字面量。
+脚本必须保持纯 ASCII（PowerShell 5.1 按 ANSI 读无 BOM 文件），这次先写了字面量、
+非 ASCII 字节有 6 个、正则死活匹配不到，改成转义才生效。
