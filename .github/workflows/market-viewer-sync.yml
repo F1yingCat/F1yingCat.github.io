@@ -4,6 +4,12 @@ name: Sync MarketViewer to docs
 # 改名会让部署链断掉。职责其实早就不止 MarketViewer 了，见下面的 cp 清单。
 
 on:
+  # 0. 手动触发 = "现在就修复一次"。
+  #    push 触发只认 static/**，而只改 docs/ 的提交（比如把 Gmeek 的重置改回来）
+  #    不会触发它，站点就停在坏的状态直到下一次 Gmeek 定时跑。
+  #    有了这个按钮，重置后可以立刻拉回，不用等。
+  workflow_dispatch:
+
   # 1. 当 static/ 下文件变化时触发（涵盖 Mavis 每天推数据）
   #    不要监听 docs/，否则 sync 自己 push 会自循环
   push:
@@ -30,8 +36,9 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    # Gmeek 失败时也同步（万一 Gmeek 跑挂了我们也保持 MarketViewer 最新）
-    if: ${{ github.event_name == 'push' || github.event.workflow_run.conclusion != 'failure' }}
+    # Gmeek 失败时也同步（万一 Gmeek 跑挂了我们也保持页面最新）。
+    # workflow_dispatch 是手动修复，必须永远放行。
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion != 'failure' }}
     permissions:
       contents: write
     steps:
