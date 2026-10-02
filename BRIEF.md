@@ -2827,3 +2827,6 @@ issue opened/edited  ->  Gmeek.yml 触发
 **记一笔**：正则里的 CJK 标点要用 `\u3002` 这种转义写，不能直接写字面量。
 脚本必须保持纯 ASCII（PowerShell 5.1 按 ANSI 读无 BOM 文件），这次先写了字面量、
 非 ASCII 字节有 6 个、正则死活匹配不到，改成转义才生效。
+**收尾**：`backup/Origin of everything.md` 里那行来源链接也删了，blogBase 里 P1 的
+`wordCount`（56 → 29）和 `description` 一并纠正。Gmeek 下次跑会按干净的 backup 重算，
+所以这个纠正能留住。线上一度显示"56 字"，那是虚的。
