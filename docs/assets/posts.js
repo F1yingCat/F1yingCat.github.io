@@ -21,7 +21,7 @@
    Posts at generation time: 3
    ============================================================ */
 window.POSTS = [
-    { cn:'Origin of everything', desc:'This is how everything start.。', lab:'documentation', date:'2025-11-13', words:29, href:'post/Origin%20of%20everything.html' },
+    { cn:'Origin of everything', desc:'This is how everything start.\n[f1yingcat.github.io](url)。', lab:'documentation', date:'2025-11-13', words:56, href:'post/Origin%20of%20everything.html' },
     { cn:'Pre-market 盘前速览', desc:'这是一个 每天北京时间08:45 由Minimax-M3 Mavis更新的盘前速览。', lab:'documentation', date:'2026-08-26', words:86, href:'post/Pre-market%20-pan-qian-su-lan.html' },
     { cn:'好多bug啊。。', desc:'So many bugs。', lab:'bug', date:'2026-08-27', words:12, href:'post/hao-duo-bug-a-%E3%80%82%E3%80%82.html' }
 ];
