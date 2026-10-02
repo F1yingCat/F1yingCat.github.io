@@ -54,18 +54,17 @@ jobs:
           cp -a /opt/Gmeek/backup ${{ github.workspace }}
           cp /opt/Gmeek/blogBase.json ${{ github.workspace }}
 
-      - name: Protect premarket.html
-        run: |
-          # Gmeek 在 runAll 模式下会重写整个 docs/，把 Mavis 推送的
-          # docs/premarket.html 从 working tree 中删掉。这里从 git HEAD
-          # 把它恢复回来，保证 commit 后 GitHub Pages 仍然有盘前速览页面。
-          # 注意：要求 HEAD 中已有此文件（Mavis 已经推过），否则跳过。
-          if git cat-file -e HEAD:docs/premarket.html 2>/dev/null; then
-            git checkout HEAD -- docs/premarket.html
-            echo "✓ premarket.html 已从 HEAD 恢复"
-          else
-            echo "⚠ HEAD 中无 premarket.html，跳过恢复"
-          fi
+      # 原先这里有一步 "Protect premarket.html"（git checkout HEAD -- docs/premarket.html），
+      # 用来把 Gmeek 在 runAll 模式下冲掉的那张盘前速览页捡回来。
+      # 2026-10-02 该页已主动删除、盘前速览统一到 MarketViewer.html#premarket，这一步随之删除。
+      #
+      # 真正的保护网不在这份文件里，在 market-viewer-sync.yml：它在 Gmeek 跑完之后
+      # （workflow_run 触发，注释里明写"防止被它清空"）把 static/ 下的
+      # index/tag/rss/post/MarketViewer/assets/data 全量搬回 docs/。
+      # 手工维护的内容一律放 static/，由那条 workflow 负责还原。
+      # 反过来说：直接手写进 docs/ 而不放进 static/ 的文件不会有人替它兜底 ——
+      # 下一次 Gmeek 构建会静默删掉它，并被下面的 git add . / commit 提交进去。
+      # 当年 premarket.html 之所以要在这里单开一步，正是因为它是唯一的例外。
 
       - name: update html
         run: |

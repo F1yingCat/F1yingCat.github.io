@@ -1,0 +1,139 @@
+<#
+  genposts.ps1 - build the single shared post list for the whole site.
+
+  ASCII-ONLY ON PURPOSE. PowerShell 5.1 reads a BOM-less .ps1 as ANSI, so CJK
+  in these comments gets mangled and the parse dies (margin.ps1 carries the
+  same warning). The generated posts.js may contain CJK -- it is written as
+  data with an explicit UTF8 encoder, which is a different thing entirely.
+
+  Source : blogBase.json -> postListJson
+  Output : window.POSTS in a plain <script> (see -Out)
+
+  Why blogBase.json and not docs/postList.json:
+    blogBase.json's postListJson has every field the pages need --
+    postTitle / postUrl / createdDate / labels / description / wordCount,
+    which map onto cn / href / date / lab / desc / words.
+    docs/postList.json carries only 5 fields; description and wordCount are
+    missing, so it cannot drive the boards.
+
+  Why a generated <script> and not a runtime fetch:
+    fetch() is blocked by CORS on file:// (render.js already learned this the
+    hard way -- MarketViewer sits at "loading" forever when opened from disk),
+    and all three pages would need async handling plus a loading state.
+    An ordinary <script> has neither problem.
+
+  Order: createdDate ascending (oldest -> newest), matching the archive page's
+    left-to-right layout. The home page's notice board takes the TAIL of the
+    array for "most recent"; see the slice comment in index.html.
+
+  Fields: cn / desc / lab / date / words / href
+    The old hand-written arrays also carried `lv`, which nothing in the site
+    ever reads, so it is not emitted. `pin` is not emitted either -- index.html
+    derives it from the display position purely as a CSS class.
+
+  Local : powershell -NoProfile -ExecutionPolicy Bypass -File genposts.ps1
+  CI    : market-viewer-sync.yml, shell: pwsh, output to docs/assets/.
+          Do NOT point it at static/ from inside that workflow: its trigger
+          paths are static/**, so committing back into static/ makes the
+          workflow re-trigger itself forever.
+#>
+
+param(
+  [string] $Base = 'C:\WorkFiles\blog\blogBase.json',
+  [string[]] $Out = @('C:\WorkFiles\blog\static\assets\posts.js')
+)
+
+# param() has to be the very first statement in the file, so $ErrorActionPreference
+# cannot go above it.
+$ErrorActionPreference = 'Stop'
+
+# ---- JS string literal escaping ------------------------------------------
+# Backslash first, then quote, then the control characters. U+2028/U+2029 are
+# legal inside a JS string but trip up some parsers, so escape them too.
+function ConvertTo-JsString([string] $s) {
+  if ($null -eq $s) { return "''" }
+  $t = $s -replace '\\', '\\\\'
+  $t = $t -replace "'", "\'"
+  $t = $t -replace "`r`n", '\n'
+  $t = $t -replace "`r", '\n'
+  $t = $t -replace "`n", '\n'
+  $t = $t -replace ([char]0x2028), '\u2028'
+  $t = $t -replace ([char]0x2029), '\u2029'
+  $t = $t -replace '</', '<\/'
+  return "'" + $t + "'"
+}
+
+# ---- read source ---------------------------------------------------------
+$raw = [System.IO.File]::ReadAllText($Base, [System.Text.Encoding]::UTF8)
+$cfg = $raw | ConvertFrom-Json
+
+if (-not $cfg.postListJson) { throw "blogBase.json has no postListJson" }
+$entries = @($cfg.postListJson.PSObject.Properties | ForEach-Object { $_.Value })
+if ($entries.Count -eq 0) { throw "postListJson is empty" }
+
+# ---- sort: createdDate asc, then createdAt asc as a tie-break ------------
+$posts = $entries | Sort-Object `
+  @{ Expression = { $_.createdDate }; Ascending = $true }, `
+  @{ Expression = { [double]$_.createdAt }; Ascending = $true }
+
+# ---- assemble ------------------------------------------------------------
+$lines = @()
+foreach ($p in $posts) {
+  $lab = ''
+  if ($p.labels -and @($p.labels).Count -gt 0) { $lab = [string]@($p.labels)[0] }
+
+  $words = 0
+  if ($null -ne $p.wordCount) { $words = [int]$p.wordCount }
+
+  $fields = @(
+    "cn:"    + (ConvertTo-JsString $p.postTitle)
+    "desc:"  + (ConvertTo-JsString $p.description)
+    "lab:"   + (ConvertTo-JsString $lab)
+    "date:"  + (ConvertTo-JsString $p.createdDate)
+    "words:" + $words
+    "href:"  + (ConvertTo-JsString $p.postUrl)
+  )
+  $lines += '    { ' + ($fields -join ', ') + ' }'
+}
+
+# comma between array elements (and a trailing one is legal JS, but keep it clean)
+for ($i = 0; $i -lt $lines.Count - 1; $i++) { $lines[$i] = $lines[$i] + ',' }
+
+$count = $posts.Count
+
+$body = @"
+/* ============================================================
+   Post list -- GENERATED FILE, DO NOT EDIT BY HAND
+   ------------------------------------------------------------
+   Built by out/genposts.ps1 from blogBase.json -> postListJson.
+   Regenerate:
+     powershell -NoProfile -ExecutionPolicy Bypass -File out/genposts.ps1
+
+   Change blogBase.json (Gmeek writes it) to change content. Editing this
+   file by hand gets overwritten on the next Gmeek run.
+
+   Home page, archive page and post pages all read this one array. They used
+   to be three hand-written copies, so adding a post meant editing three
+   places and missing one showed up as "listed on the home page, gone from
+   the archive".
+
+   href is relative to the SITE ROOT (post/xxx.html). post.js runs from
+   /post/ and strips the leading post/ before using it.
+
+   Fields: cn title / desc summary / lab label / date / words / href
+   Order: createdDate ascending (old -> new), matching the archive layout.
+   Posts at generation time: $count
+   ============================================================ */
+window.POSTS = [
+$($lines -join "`n")
+];
+"@
+
+$enc = New-Object System.Text.UTF8Encoding($false)
+foreach ($o in $Out) {
+  $dir = Split-Path -Parent $o
+  if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+  # explicit LF: WriteAllLines would use Environment.NewLine, i.e. CRLF on Windows
+  [System.IO.File]::WriteAllText($o, ($body -replace "`r`n", "`n"), $enc)
+  Write-Output ("wrote {0}  ({1} posts, {2} bytes)" -f $o, $count, (Get-Item $o).Length)
+}

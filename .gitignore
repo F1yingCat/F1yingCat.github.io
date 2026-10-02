@@ -1,0 +1,29 @@
+# ---- 本地验证产物，不进仓库 ----
+# out/ 里有 17.8 MB 的截图（各分辨率实机验证、探针输出），纯本地用。
+#
+# 但 out/ 下的 .ps1 要留：market-viewer-sync.yml 里的 "Regenerate posts.js"
+# 步骤会调 ./out/genposts.ps1，它被 gitignore 掉的话 CI 那步直接失败，
+# 文章清单从此不再自动更新。所以这里只排图片，不排整个 out/。
+out/*.png
+out/*.jpg
+out/*.jpeg
+out/*.gif
+out/mv/
+out/sprite-probe.html
+
+# 临时探针页（验完即删那种）
+docs/_*.html
+docs/__*.html
+
+# _expand.ps1 / _restore.ps1 造出来的备份
+*.bak-test
+
+# PowerShell 重定向事故留下的 0 字节垃圾（文件名就叫 $null）
+$null
+
+# 编辑器 / 系统
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

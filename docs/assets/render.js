@@ -627,6 +627,36 @@
     </section>`;
   }
 
+  /* ========== 按 id 打开某一页：tab 点击 / 首屏 / hash 改动走同一条路径 ==========
+     三个时段原本是三个独立页面，统一到 MarketViewer 之后，站外入口
+     （首页时段卡片、文章页、RSS）都指向这一个文件，靠 #premarket /
+     #intraday / #postmarket 落到对应那一栏。 */
+  let PAGES = [];
+
+  function markActiveTab(id) {
+    ['floating-tabs', 'mobile-tabs'].forEach(sel => {
+      const el = document.getElementById(sel);
+      if (!el) return;
+      [...el.querySelectorAll('button')].forEach(b => b.classList.remove('active'));
+      const m = el.querySelector(`button[data-page="${id}"]`);
+      if (m) m.classList.add('active');
+    });
+  }
+
+  function openPageById(id, opts) {
+    const o = opts || {};
+    const page = PAGES.find(x => x.id === id) || PAGES[0];
+    if (!page) return Promise.resolve();
+    markActiveTab(page.id);
+    /* replaceState 而不是 location.hash=：每点一次 tab 就压一条历史不对，
+       浏览器"后退"应该真的离开这个页面，而不是在三个 tab 之间来回弹。
+       fromHash 时不再写回，否则会自己触发自己。 */
+    if (!o.fromHash && (location.hash || '').replace(/^#/, '') !== page.id) {
+      try { history.replaceState(null, '', '#' + page.id); } catch (e) { /* file:// 下可能受限 */ }
+    }
+    return loadPage(page);
+  }
+
   /* ========== Tab 切换（双容器：floating + mobile） ========== */
   function renderTabs(pages, activeId) {
     const makeBtn = (p) => {
@@ -655,16 +685,8 @@
     const onClick = (e) => {
       const btn = e.target.closest('button[data-page]');
       if (!btn) return;
-      const page = pages.find(x => x.id === btn.dataset.page);
-      if (!page) return;
-      // 同步 active 态到两个容器
-      [floating, mobile].forEach(el => {
-        if (!el) return;
-        [...el.querySelectorAll('button')].forEach(b => b.classList.remove('active'));
-        const match = el.querySelector(`button[data-page="${page.id}"]`);
-        if (match) match.classList.add('active');
-      });
-      loadPage(page);
+      if (!PAGES.some(x => x.id === btn.dataset.page)) return;
+      openPageById(btn.dataset.page);
     };
     if (floating) floating.onclick = onClick;
     if (mobile) mobile.onclick = onClick;
@@ -769,8 +791,16 @@
       showError('manifest.json 中没有 pages 字段或为空');
       return;
     }
-    renderTabs(manifest.pages, manifest.pages[0].id);
-    await loadPage(manifest.pages[0]);
+    PAGES = manifest.pages;
+    /* 站外入口带着 #premarket / #intraday / #postmarket 进来时直接落到那一栏；
+       hash 对不上（比如手敲了一个不存在的）就安静地回第一页，不报错 */
+    const want = (location.hash || '').replace(/^#/, '');
+    const start = PAGES.some(p => p.id === want) ? want : PAGES[0].id;
+    renderTabs(PAGES, start);
+    await openPageById(start, { fromHash: true });
+    window.addEventListener('hashchange', () => {
+      openPageById((location.hash || '').replace(/^#/, ''), { fromHash: true });
+    });
   }
 
   // 全局 popover 浮窗行为:点击 trigger 切换,点击别处关闭
