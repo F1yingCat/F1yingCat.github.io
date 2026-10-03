@@ -85,6 +85,16 @@ jobs:
           ./out/genposts.ps1 -Base blogBase.json -Out docs/assets/posts.js
           echo "=== generated posts.js ===" && head -c 400 docs/assets/posts.js
 
+      # 模板接管的第二条路。Gmeek.yml 里已经有一份，但那份只在 Gmeek 自己
+      # commit/deploy 之前生效；这里是"只改 docs/"的提交（比如把 Gmeek 的重置
+      # 修回来、或手动 workflow_dispatch）之后唯一的还原手段。写两处不是为了
+      # 备份，是因为两条 workflow 的触发条件不同：push 到 static/ 时只有这条会跑，
+      # Gmeek 那条根本不触发。
+      - name: Adopt our template for Gmeek post pages
+        shell: pwsh
+        run: |
+          ./out/adopt-posts.ps1 -Docs docs -Base blogBase.json -Tpl out/post.tpl.html
+
       - name: Commit & Push
         run: |
           git config user.name "market-viewer-bot"

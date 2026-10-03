@@ -63,6 +63,17 @@ body{
   background:linear-gradient(to bottom,rgba(20,18,28,.96),rgba(20,18,28,.72) 70%,transparent);
 }
 .hud > *{flex-shrink:0}
+/* .znav is the one HUD child that must be allowed to shrink.
+   `.hud > *{flex-shrink:0}` is right for the brand / clock / zone name -- they
+   are nowrap, and letting them squeeze turns them into unreadable slivers. The
+   zone nav is different: it is a row of four buttons that already declares
+   flex-wrap:wrap, so shrinking it just makes it wrap onto two lines.
+   Without this it keeps its max-content width (427px with all four buttons) and
+   the whole page gets a horizontal scrollbar below ~560px -- on every page,
+   because the HUD is shared. min-width:0 is required: a flex item's automatic
+   minimum size would otherwise hold it at min-content and the wrap would never
+   get a chance. */
+.hud .znav{flex-shrink:1;min-width:0}
 .hud .brand{
   display:flex;align-items:center;gap:9px;
   font-family:'PS2P',monospace;font-size:11px;letter-spacing:.08em;
@@ -181,7 +192,7 @@ body{
 }
 
 .art{margin:0 0 26px}
-.art canvas{display:block;image-rendering:pixelated;border:var(--edge) solid var(--dusk);box-shadow:var(--pop)}
+.art canvas{display:block;image-rendering:pixelated;border:var(--edge) solid var(--dusk);box-shadow:var(--pop);max-width:100%}
 .art figcaption{
   margin-top:9px;font-family:'PS2P',monospace;font-size:8px;letter-spacing:.08em;color:var(--stone);
 }
@@ -205,6 +216,36 @@ body{
 .prose li{margin:.35em 0}
 .prose img{max-width:100%;image-rendering:pixelated;border:2px solid var(--dusk)}
 .prose hr{border:0;border-top:2px solid var(--dusk);margin:2em 0}
+
+/* Gmeek 接管（out/adopt-posts.ps1）之后，正文不再只由我们自己写。
+   以前 .prose 只管 p/a/code/blockquote/列表/img/hr，手写文章刚好只用得上这些；
+   Gmeek 从 issue 里渲染出来的正文会带 h2/h3、代码块、表格，缺了样式就会
+   以浏览器默认样子掉进版面里（衬线标题、灰底代码块），一眼就露馅。 */
+.prose h2,.prose h3{
+  font-size:17px;line-height:1.5;color:var(--cream);font-weight:700;
+  margin:1.9em 0 .8em;padding-bottom:8px;border-bottom:2px solid var(--dusk);
+}
+.prose h2{font-size:19px;border-bottom-color:var(--orange)}
+.prose h2::before,.prose h3::before{content:"";display:inline-block;width:9px;height:9px;margin-right:9px;background:var(--amber);vertical-align:middle}
+.prose h2::before{background:var(--orange)}
+/* 代码块：内嵌的 code 规则是为行内代码写的（带背景和 padding），
+   进了 pre 里会和 pre 自己的框叠成两层，所以这里要把那几项摘掉 */
+.prose pre{
+  margin:1.3em 0;padding:14px 15px;overflow-x:auto;
+  background:var(--ink-2);border:2px solid var(--dusk);
+}
+.prose pre code{
+  font-family:Consolas,'Courier New',monospace;font-size:13px;line-height:1.7;
+  background:none;border:0;padding:0;color:var(--paper);white-space:pre;
+}
+/* 表格：Gmeek 的正文里表格不少（行情类 issue 基本全是表） */
+.prose table{
+  width:100%;border-collapse:collapse;margin:1.3em 0;font-size:14px;
+  display:block;overflow-x:auto;
+}
+.prose th,.prose td{border:1px solid var(--dusk);padding:7px 10px;text-align:left}
+.prose th{background:var(--ink-2);color:var(--cream);font-weight:700;white-space:nowrap}
+.prose tbody tr:nth-child(even){background:rgba(255,255,255,.025)}
 
 /* 上一篇 / 下一篇。箭头那一侧贴边，标题那一侧也贴边，
    于是中间那条缝就是"两篇之间的分界" */

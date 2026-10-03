@@ -105,9 +105,23 @@ $entries = @($cfg.postListJson.PSObject.Properties | ForEach-Object { $_.Value }
 if ($entries.Count -eq 0) { throw "postListJson is empty" }
 
 # ---- sort: createdDate asc, then createdAt asc as a tie-break ------------
+# createdAt is a Unix timestamp today (Int32), but it is the one field whose
+# format belongs to Gmeek, not to us. Casting it straight to [double] makes the
+# whole sort throw on any other shape -- and because the CI step that calls this
+# carries continue-on-error, the visible result would be a red run plus an
+# articles list frozen at whatever it was, with no visible symptom in the site.
+# Unparseable means "no tie-break information", i.e. 0. The primary key is
+# createdDate, so the order stays right either way.
+function Get-SortStamp($v) {
+  if ($null -eq $v) { return 0.0 }
+  $d = 0.0
+  if ([double]::TryParse([string]$v, [ref]$d)) { return $d }
+  return 0.0
+}
+
 $posts = $entries | Sort-Object `
   @{ Expression = { $_.createdDate }; Ascending = $true }, `
-  @{ Expression = { [double]$_.createdAt }; Ascending = $true }
+  @{ Expression = { Get-SortStamp $_.createdAt }; Ascending = $true }
 
 # ---- assemble ------------------------------------------------------------
 $lines = @()

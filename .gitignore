@@ -14,6 +14,11 @@ out/sprite-probe.html
 # 临时探针页（验完即删那种）
 docs/_*.html
 docs/__*.html
+# 同上，但允许出现在子目录里：out/measure.ps1 曾经把探针写在 docs/post/ 下，
+# 那里的 ../assets/ 才解析得到。measure.ps1 现在改成走本地 HTTP 不落盘，
+# 这条留着是为了老的 make-probe-*.ps1 之类的脚本。
+docs/**/_*.html
+out/adopttest/
 
 # _expand.ps1 / _restore.ps1 造出来的备份
 *.bak-test

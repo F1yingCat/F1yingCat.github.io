@@ -79,6 +79,24 @@ jobs:
           bash ./out/restore-docs.sh
           echo "=== docs after restore ===" && ls docs/ && ls docs/assets/ docs/data/
 
+      # 模板接管：把 Gmeek 用 Primer 模板生成的 docs/post/*.html 换成我们自己的版式
+      # （HUD / kicker / 上下篇 / 像素猫配图）。
+      #
+      # 为什么必须放在本 workflow 里、而不是只靠 market-viewer-sync.yml：
+      # 这个 job 末尾会自己 upload-pages-artifact 然后 deploy，也就是说它
+      # 【直接发布的是 docs/ 当前的样子】。sync 是 workflow_run 触发的后置修复，
+      # 在那之前有一个窗口，线上躺着的已经是 Gmeek 原版页面了。
+      #
+      # 同样不加 continue-on-error：接管失败还发版，等于把 Primer 页面发上线。
+      # 失败时这个 job 停住，线上保留上一次的好版本。
+      #
+      # 幂等：被接管过的页面带 out/adopt-posts.ps1 标记，脚本会跳过；
+      # Gmeek 每次重新生成它才会再次被接管，所以改 issue 里的正文照样能生效。
+      - name: Adopt our template for Gmeek post pages
+        shell: pwsh
+        run: |
+          ./out/adopt-posts.ps1 -Docs docs -Base blogBase.json -Tpl out/post.tpl.html
+
       - name: update html
         run: |
           git config --local user.email "$(jq -r ".email" config.json)"

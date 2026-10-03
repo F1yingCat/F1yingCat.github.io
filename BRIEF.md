@@ -2830,3 +2830,198 @@ issue opened/edited  ->  Gmeek.yml 触发
 **收尾**：`backup/Origin of everything.md` 里那行来源链接也删了，blogBase 里 P1 的
 `wordCount`（56 → 29）和 `description` 一并纠正。Gmeek 下次跑会按干净的 backup 重算，
 所以这个纠正能留住。线上一度显示"56 字"，那是虚的。
+
+## Round 23 (2026-10-03) — 删掉那篇盘前速览；16 幅猫图；Gmeek 文章页模板接管
+
+这一轮四件事：一篇文章下线；猫图从 8 幅扩到 16 幅；**新文章的页面接管成我们站的样子**；
+以及为了验证前两件，重建了宽度测量工具——**结果它先翻出两个真 bug，其中一个已经存在很多轮了**。
+
+### 23.1 《Pre-market 盘前速览》下线
+
+四个地方各有一份，全删了：`blogBase.json` 去掉 P2、`backup/Pre-market 盘前速览.md`、
+`static/post/` 与 `docs/post/` 的同名 html、`static/rss.xml` 与 `docs/rss.xml` 里的那条 item。
+现在清单是 3 篇。
+
+**一个要说清楚的边界**：`blogBase.json` 是 Gmeek **上次运行**的产物。GitHub issue 那边删掉之后，
+要等下一次 Gmeek 跑（issue 事件或每天 16:00 UTC 的定时）才会真的反映到站点上。
+本地这四个删除是"我们这边的账已经平了"，不是"线上已经没了"。
+
+### 23.2 猫图 8 → 16，夜 8 昼 8
+
+| 夜 | 昼 |
+|---|---|
+| `origin` 第一个点 / `clock` 钟和折线 / `bug` 楼下的夜 / `perch` 砖墙上的夜 | `beach` 海边日出 / `boat` 海上的船 / `summit` 山上看夕阳 / `garden` 院子 |
+| `puddle` 水洼 / `boxcat` 箱子里 / `rain` 路灯下的雨 / `roof` 屋顶 | `window` 窗台 / `field` 白天草地 / `pond` 池塘 / `snow` 雪 |
+
+白天那 8 幅不能复用夜里的画法，所以另起了一套昼景工具：`skyDay`（三段硬边色带）、
+`sunDisc`（台阶画的圆盘——圆也不许用曲线）、`cloud`、`sea`、`grassDay`。
+云的轮廓、太阳的边、浪的边全是直角台阶，和夜里那套规矩一致。
+
+**配图分配用标题哈希，不用 `Math.random`**。同一篇文章刷新多少次都是同一张（否则那叫抽奖，
+不叫配图），不同文章才会散开。`data-art` 缺省时由 `pickArt(slug)` 自动挑，
+所以**新文章不需要任何人指定画哪一幅**——这正好是模板接管的前提。
+
+**图注也得自动**。手写那两篇的图注是作者写的，讲的是画里没有的话；
+自动挑的画只能报画名。加了 `ARTCAP` / `ARTCN` 两张表，`figcaption[data-auto]` 会被覆盖成
+`PERCH — 砖墙上的夜` 这样。手写页面的图注不带 `data-auto`，不会被碰。
+
+### 23.3 修一个"猫悬空 47px"的偏移 bug
+
+排查 `catAt` 时查出来的：`cat24` 共 24 行，但**最后一行非空的是第 22 行**，
+而 `drawSprite` 画在 `oy + 22 * mul = oy + 44`。所以"猫踩在地上"要用 `oy = feetY - 44`，
+原代码用的 `-92`——悬空 47px。已经验收过的 `bug` 那幅里就有这个 bug，
+而且注释方向还写反了。`boxcat`（改成"箱体→猫→再盖箱体正面"两层遮挡）和 `roof` 一起按新偏移重排。
+
+**`roof` 的斜线也改了**。原来屋面是 `fillRect(rx, 132 - (rx/8)*2, 8, 4)`——8 宽 2 高的台阶，
+在 1x 下相邻台阶几乎接死，**连成一条斜线**，而这个站的斜线一律读成"划痕"。
+改成左右两级的直角平台 + 压顶亮边 + 窗户（其中一扇是亮的），猫站在低平台上。
+现在 16 幅逐张目检过，猫脚都踩在地面 / 砖墙顶 / 平台面 / 山脊 / 草地上。
+
+### 23.4 模板接管：Gmeek 生成的页面变成我们的页面
+
+**问题**：Gmeek 用它自己的 Primer 模板生成每一篇文章页——CDN 样式表、明暗主题切换、
+utterances 评论框、页脚写着 "Blog Title / Powered by Gmeek"。
+公告栏和归档早就跟着 `blogBase.json` 走了（21.9 实测过），**只有文章页本身还掉在设计之外**：
+新开一个 issue，首页和归档里立刻出现，点进去却是另一个站。
+
+**做法**：两个新文件，各司其职。
+
+- `out/post.tpl.html` —— 版式模板，和手写文章页同构，只是把标题、描述、`data-post`、
+  正文、issue 链接留成 `@@TOKEN@@`。**所有中文都在这个文件里。**
+- `out/adopt-posts.ps1` —— 扫描 `docs/post/*.html`，认 Gmeek 页面（`meekdai.com/Gmeek.html`
+  或 `meek_theme`）并改写。**纯 ASCII**：PowerShell 5.1 按 ANSI 读无 BOM 的 .ps1，
+  文件里一个中文字节都会让解析崩掉（21.9 咬过一次）。CJK 靠"用显式 UTF8 读模板文件"绕开。
+
+**取字段的分工**：标题 / 正文 / issue 号从 Gmeek 页面里取；
+**日期 / 字数 / 标签从 `blogBase.json` 取**——Gmeek 的页面上根本没有这三样，而 kicker 三样都要。
+匹配键是 `postUrl` 解码后的文件名。
+
+两个坑：
+
+1. **正文抽取要数 `<div>` 嵌套。** 早先用"找下一个 `</div>`"，结果正文里只要有一个
+   `<div class="nested">` 就在那里截断。改成数深度。
+2. **`data-post` 的 `href` 必须是 `post/` 剥掉、百分号编码原样保留的形式**，也就是
+   `MarketViewer%20-shi-chang-su-lan.html`。第一版顺手 `UnescapeDataString` 成了
+   `MarketViewer -shi-chang-su-lan.html`，和 `posts.js` 对不上，
+   `pager` 里的 `findIndex` 直接失配——**两个箭头同时消失，而且不报错**。
+   这种"静默失效"比崩了更难查。
+
+**幂等**：被接管过的页面留一个 `out/adopt-posts.ps1` 标记在注释里，脚本下次跳过。
+Gmeek 重新生成它才会再次被接管，所以**改 issue 里的正文照样生效**。
+手写页（`static/post/`）永远不匹配 Gmeek 标记，也永远不会被碰。
+**接管后的文件留在 `docs/post/`，不回写 `static/`**——`static/` 是手工源码，Gmeek 的产物不属于那里。
+
+**接进两条 workflow**：
+
+- `Gmeek.yml` 的 `Restore hand-written pages` 之后。**必须在这里**，因为这个 job
+  末尾自己 upload artifact 然后 deploy，中间不接 sync 那条；只靠 sync 修的话，
+  线上会先亮一段时间 Primer 页面。同样**不加 `continue-on-error`**。
+- `market-viewer-sync.yml` 的 `Regenerate posts.js` 之后。**不是备份**——两条的触发条件不同：
+  只改 `docs/` 的提交（比如把重置修回来、或手动 `workflow_dispatch`）只有 sync 会跑。
+
+**`.prose` 补了 Gmeek 正文会用到、而我们样式表里缺的结构**：`h2`/`h3`、代码块、表格。
+以前 `.prose` 只管 `p/a/code/blockquote/列表/img/hr`，因为手写文章刚好只用得上这些；
+Gmeek 从 issue 渲染出来的正文带 `<pre><code>` 和 `<table>`，缺了样式就以浏览器默认样子
+（衬线标题、灰底代码块）掉进版面里，一眼露馅。
+
+**丢掉的东西**：utterances 评论框没有了。接管页和我们手写页保持一致（手写页本来也没有评论 UI）。
+站点是 issue 驱动的，utterances 原本是 1:1 绑 issue 的；这是这次接管**有意的取舍**，
+如果之后要评论，得在模板里另做一套，不能靠 Gmeek 那套。
+
+### 23.5 顺带修的两个真 bug（都是先有工具、后有 bug）
+
+**先说工具**。老办法是"按 360 宽截图然后肉眼看有没有溢出"。这个办法是**错的**：
+Windows 上 headless Edge 的视口**不管 `--window-size` 写多少都不低于 ~496 CSS px**，
+所谓 360 宽截图其实是 496 的渲染被裁成 360。后果是——截图上内容看着被切掉，
+最自然的读法是"截图被裁了"（这也对），于是**真溢出和裁剪混成同一个样子**。
+Round 20 那句"20 个宽度全部 0 横向溢出"，就是这么来的，**从来没成立过**。
+
+**新工具两个，一个能卡提交，一个给人看**
+
+- `out/measure.ps1` —— 本地起一个 http 服务把 `docs/` 挂上去，被测页塞进定宽 iframe，
+  页面里的探针把数字 `POST` 回来，主线程用 `__poll` 取。**能比较的文本，不是从像素里读出来的数**，
+  超过就 `exit 1`。绕开了两条死路（`file://` 跨源读不到 iframe 的 DOM；
+  `--dump-dom` 在这个 Edge 上已经不吐任何输出了）。
+- `out/readout.ps1` —— 同一套探针，但走 `file://` iframe + `postMessage`，
+  父页把结果画成 28px 大字然后截图。**给你看的那一个。**
+
+写的过程中被工具自己咬了五次，都记在脚本注释里，因为每一条都是"看起来在测、其实没测"：
+
+1. `Stop-Job` 卡在阻塞的 `GetContext()` 上，数字都打完了进程还不退 → 数字先打出来，
+   作业不主动停，让进程退出带走 runspace。
+2. `GetContextAsync` 在上一次还没返回时再发一个会抛，循环一个请求都收不到 → **同一时刻只留一个待决任务**。
+3. **空结果被当成了通过**。`$pending -eq ''` 和"没结果"不是一回事：
+   空串让 `over=` 的正则不匹配、`$over` 停在 0，于是那个宽度**根本没被量，却报成干净**。
+   探针静默通过比探针报错危险得多，所以单独一个 `got` 标志。
+4. **IPC 走文件**是最差的一版：job 写文件时主线程在读，直接抛
+   `being used by another process`；而且上一个宽度的 POST 会在下一个宽度清空文件之后才落地，
+   于是 400px 那一行报的是 360px 的数字。换成由 job 持有状态、主线程 `__poll` 取，
+   两个问题一起消失。
+5. **一次 `GetContext` 之外还踩了一个更朴素的**：探针只 POST 一次，
+   而 `--virtual-time-budget` 和页面自己的定时器赛跑 sometimes 预算先烧完。
+   改成 load 之后每 250ms 连发 20 次，服务器留最后一条，时序就无关了。
+   另外每条结果都带上**它是在哪个宽度上量的**（`req=`），对不上就丢弃——
+   这正是第 4 条的解药。
+
+还有一条不属于工具但属于这台机器：**Edge 空闲后的第一次 headless 启动能出图，
+一两秒内紧接着的启动什么都不写**（无报错、无文件），换 `--user-data-dir` 也没用。
+看起来像新进程把自己交给了一个还没退干净的浏览器进程。`readout.ps1` 里每次启动前 `sleep 2`
+之后整个宽度表就都能回来了。另外**截图落盘比浏览器进程返回还晚**，
+当场检查文件会把成功的运行报成 `NO IMAGE`——所以检查前也留了 1.5 秒。
+
+**bug 一：HUD 在 ~560px 以下横向溢出 107px**（`index.html` 之外，**全站每一页**）。
+`nav.znav` 是四个按钮，自身已经写了 `flex-wrap:wrap`，但 `.hud > *{flex-shrink:0}`
+让它保持 max-content 宽度（427px），于是**永远没有机会换行**。
+`min-width:0` 也必须给：flex item 的自动最小尺寸会把它按 min-content 撑住。
+brand / 时钟 / 区名那些 `nowrap` 的**不能**一起放开——挤扁了就没法读了。所以只给 `.znav`：
+`.hud .znav{flex-shrink:1;min-width:0}`。
+
+**bug 二：320px 视口下配图画布撑破容器 40px**。`fitCanvas` 里
+`Math.max(1, Math.floor(cssW / 320))`，容器只有 280 时算出来是 1，于是给了 320px 的画布。
+现在容器窄于 320 就**位图仍然按 320 画、只把 CSS 盒子缩小**，
+`image-rendering:pixelated` 保证边缘还是硬的。**这是全站唯一可能出现非整数缩放的地方，
+而且要视口小于约 360px 才会发生。**
+实测 320px 下接管页的 `canvas css=280px`、位图仍是 `320x200`。
+
+`tag.html` 量出来 `over` 不为 0，但**那不是 bug**：归档页是一块可以用镜头推着走的板子，
+纸条是 `position:absolute` 由 `positionPlates()` 摆位，`html,body` 上本来就有 `overflow:hidden`。
+`index.html` 那 4 个 `offenders` 同理——`canvas.sprite` 是视差精灵带，在自己的裁剪容器里，
+`over=0` 说明文档本身没有横向溢出。这一条写进了 `measure.ps1` 的文件头，
+免得下一个人去追两个不存在的缺陷。
+
+### 23.6 验证
+
+`measure.ps1`，8 个宽度 320/360/400/480/560/760/1100/1600，全部 `over=0`：
+
+| 页面 | 结果 |
+|---|---|
+| `index.html` | 8/8 `over=0`（`offenders=4` 是视差精灵带，容器内） |
+| `post/MarketViewer -shi-chang-su-lan.html`（接管页） | 8/8 `over=0`，`offenders=0`，`art=perch`，320px 下 `canvas css=280px` |
+| `post/Origin of everything.html` | 8/8 `over=0`，`offenders=0` |
+| `post/hao-duo-bug-a-。。.html` | 8/8 `over=0`，`offenders=0` |
+
+`readout.ps1` 的截图交叉验证同样干净，而且顺带证实了**上下篇链在三篇之间是通的**：
+中间那篇同时显示 `← 上一篇 Origin of everything` 和 `下一篇 →MarketViewer 市场速览`，
+两头的箭头分别指向手写页和**接管页**。
+
+其余：
+
+- **接管**：真实 `docs/post/MarketViewer -shi-chang-su-lan.html` 接管前后各截一次。
+  接管后 HUD、kicker（DOCUMENTATION / 2026-10-02 / 85 词）、像素猫、自动图注
+  `PERCH — 砖墙上的夜`、正文、上下篇、PATROL/ARCHIVE/ISSUE、底栏全在。
+  再跑一次脚本：`adopted 0, skipped 3`——幂等。
+- **富文本**：造一篇带 `h2/h3/pre/code/blockquote/ul/table/嵌套 div` 的 Gmeek 页，
+  全部正确搬过来，嵌套 div 没让抽取提前截断，`href="url"` 那个来源链接和它后面的孤立 `</p>` 一起清掉。
+- **新 issue 全链路（离线模拟，没动真文件）**：`blogBase.json` 加第 4 条 →
+  `genposts.ps1` 出 4 条 → 新页被接管 → 页面 `data-post.href` 与 `posts.js` 里那一行**逐字节相同**。
+  顺带修了 `genposts.ps1` 的一个脆弱点：`[double]$_.createdAt` 遇到非数字格式会让整个排序抛，
+  而 CI 那步带 `continue-on-error`，后果是**清单静默停更**。改成 `TryParse`，解析不了当 0。
+  用真 `blogBase.json` 重新生成，产物与仓库里那份**逐字节相同**（无漂移）。
+- **16 幅猫图**逐张目检（`out/art-all.png` 分四段）。
+- **编码**：改动过的 16 个文件全部 UTF-8 无 BOM + LF；四个 `.ps1` 纯 ASCII（0 个非 ASCII 字节）。
+- **linkcheck**：6 页 34 链 0 死链。
+
+### 23.7 没有推上去
+
+这一轮**没有 commit、没有 push**。工作区是脏的，等你决定。
+
