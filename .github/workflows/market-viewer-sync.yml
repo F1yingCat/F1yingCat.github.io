@@ -85,6 +85,24 @@ jobs:
           ./out/genposts.ps1 -Base blogBase.json -Out docs/assets/posts.js
           echo "=== generated posts.js ===" && head -c 400 docs/assets/posts.js
 
+      # RSS 的 item 列表同样从 blogBase.json 生成。
+      #
+      # 为什么以前会漏：rss.xml 是手写的，规则实际是"你亲手写的文章进订阅，
+      # 从 issue 来的文章不进"。2026-10-02 那篇 MarketViewer 就是从 issue 来的，
+      # 于是站上 3 篇、订阅里 2 篇，而且**没有任何报错**——漏一篇订阅比漏一块
+      # 归档板更安静，读的人只会觉得"最近没更新"。
+      #
+      # 和 genposts 同一个位置的原因：blogBase.json 刚被 Gmeek 刷新过。
+      # 频道本身的文案（标题、描述、图片）仍然是手写的，脚本只替换 item 列表和
+      # lastBuildDate，所以要改措辞还是直接改 static/rss.xml。
+      - name: Regenerate rss.xml
+        shell: pwsh
+        # 和上面那步同一个理由：一份只影响订阅的生成物，不值得让整个站点停更。
+        continue-on-error: true
+        run: |
+          ./out/genrss.ps1 -Base blogBase.json -Out docs/rss.xml
+          echo "=== generated rss items ===" && grep -c '<item>' docs/rss.xml
+
       # 模板接管的第二条路。Gmeek.yml 里已经有一份，但那份只在 Gmeek 自己
       # commit/deploy 之前生效；这里是"只改 docs/"的提交（比如把 Gmeek 的重置
       # 修回来、或手动 workflow_dispatch）之后唯一的还原手段。写两处不是为了
