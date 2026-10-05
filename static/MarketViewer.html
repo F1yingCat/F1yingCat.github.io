@@ -442,8 +442,8 @@
       max-height:calc(100vh - 80px);
       padding:14px 16px; font-size:14px;
     }
-    /* KPI banner / card */
-    section.kpi-strip .kpi-row{ gap:10px; }
+    /* KPI banner / card — 只管卡片外观;列数/间距统一由文件末尾的
+       KPI STRIP LADDER 按分辨率给,这里不要再写列数(见那里的说明) */
     .kpi{ padding:12px 14px; min-height:90px; }
     .kpi .lbl{ font-size:14px; }
     .kpi .val{ font-size:21px; }
@@ -475,10 +475,9 @@
     /* 1-col 网格:避免桌面 3-col 在移动屏过挤 */
     #content{ display:grid; grid-template-columns:minmax(0,1fr); gap:14px; }
     #content > section.span-2{grid-column:1; min-width:0; }
-    /* KPI banner:2 列(原本 3×3,在移动端 2×4 更易读) */
-    section.kpi-strip .kpi-row{
-      grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px;
-    }
+    /* KPI banner 的列数(2 列)挪到文件末尾的 KPI STRIP LADDER 了:
+       这条原本在这里,被后面 @media(min-width:768px) 里的同选择器 3 列规则
+       整个盖掉,768-1024 段等于没生效 */
     .kpi{ padding:14px 16px; min-height:96px; }
     .kpi .lbl{ font-size:14.5px; }
     .kpi .val{ font-size:22px; }
@@ -528,16 +527,10 @@
     header.top p{font-size:14px; line-height:1.65;}
     .tag{font-size:12.5px; padding:2px 10px;}
 
-    /* KPI strip: 全宽 banner
-       1920 大屏(>1600)→ 8 个一行(1800/8≈225px,数字紧凑但可读)
-       桌面 768+ 全部 3×3 (8+1 空,卡宽 230-380 渐进)
-       ≤767 走 mobile(2×4,8 整齐) */
+    /* KPI 卡片外观 + 段内非 banner 的 .kpi-row 基线(2 列)。
+       banner(「一、盘前关键关注」这类 type:kpi 段)的列数按分辨率分档,
+       见文件末尾 KPI STRIP LADDER —— 别在这里写,会被后面的 @media 顺序坑 */
     .kpi-row{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; margin-top:0;}
-    section.kpi-strip .kpi-row{
-      display:grid;
-      grid-template-columns:repeat(3, minmax(0,1fr));
-      gap:8px;
-    }
     .kpi{padding:7px 10px;}
     .kpi .lbl{font-size:var(--kpi-lbl);}
     .kpi .val{font-size:var(--kpi-val);}
@@ -672,11 +665,11 @@
       --table-size: 13px;
       --h2-size: 14.5px;
     }
-    /* 切 2-col: 外层 #content 改 2-col;KPI banner 保持 3×3 (基线已设) */
+    /* 切 2-col: 外层 #content 改 2-col;KPI banner 2×3 由末尾的 LADDER 给 */
     #content{ grid-template-columns: repeat(2, minmax(0,1fr)); }
   }
 
-  /* 768-991: 平板,2-col 更紧凑,KPI 3×3 保持 */
+  /* 768-991: 平板,2-col 更紧凑 */
   @media (min-width: 768px) and (max-width: 991px) {
     :root {
       --wrap-pad: 44px 14px 14px;
@@ -690,6 +683,30 @@
       --h2-size: 14px;
     }
     #content{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+  }
+
+  /* =================================================== */
+  /* ===== KPI STRIP LADDER —— banner 列数的唯一来源 =====
+     「一、盘前关键关注」等 type:kpi 段 = 全宽 banner + 6 张卡,按可用宽度分档:
+       ≥1025px : 3 列 → 2 行 × 3 列,卡宽 ~310-500px
+       600-1024: 2 列 → 3 行 × 2 列,卡宽 ~370-490px
+       ≤599px  : 2 列 → 3 行 × 2 列
+     为什么必须收在末尾单独一块:之前 2 列写在 @media(600-1024px) 里、3 列写在
+     后面 @media(min-width:768px) 里,两条选择器特异性都是 (0,2,1),后写的赢
+     → 768-1024 整段被 3 列接管,768px 时每张卡只剩 228px,比 760px 的 203px
+     还窄(视口越宽卡片反而越挤)。收到这里后按断点单向覆盖,不再依赖样式表
+     里的先后顺序 —— 改列数只改这一处。 */
+  @media (min-width: 1025px) {
+    section.kpi-strip .kpi-row{
+      grid-template-columns:repeat(3, minmax(0,1fr));
+      gap:8px;
+    }
+  }
+  @media (max-width: 1024px) {
+    section.kpi-strip .kpi-row{
+      grid-template-columns:repeat(2, minmax(0,1fr));
+      gap:10px;
+    }
   }
 </style>
 </head>
