@@ -442,8 +442,8 @@
       max-height:calc(100vh - 80px);
       padding:14px 16px; font-size:14px;
     }
-    /* KPI banner / card */
-    section.kpi-strip .kpi-row{ gap:10px; }
+    /* KPI banner / card — 只管卡片外观;列数/间距统一由文件末尾的
+       KPI STRIP LADDER 按分辨率给,这里不要再写列数(见那里的说明) */
     .kpi{ padding:12px 14px; min-height:90px; }
     .kpi .lbl{ font-size:14px; }
     .kpi .val{ font-size:21px; }
@@ -461,12 +461,22 @@
   }
 
   /* =================================================== */
-  /* 中等屏移动设备适配(600-1024px)— 鸿蒙 Mate 40 RS / iPad Mini / 折叠屏
+  /* 中等屏移动设备适配(600-767px)— 鸿蒙 Mate 40 RS / iPad Mini / 折叠屏
      Mate 40 RS 物理分辨率 1344×2772 ppi 456, dpr ≈ 2.85 → CSS viewport ≈ 472 px(竖屏)/972(横屏)
      不依赖 pointer:coarse(鸿蒙浏览器可能识别为 fine),纯按 viewport width 判断
-     1-col 网格 + 加大 padding + 字号比小手机大 */
+     1-col 网格 + 加大 padding + 字号比小手机大
+
+     为什么上界是 767 而不是原来的 1024:这段原本写的是 600-1024,而下面
+     另有一段 @media(min-width:768px) 的桌面基础样式。两段在 768-1024 重叠,
+     而重叠区间里本段的规则几乎全被后面那段按「同特异性 + 源码在后」盖掉 ——
+     section padding / h2 字号 / .kpi padding / .kpi .val / chart 高度 / 浮动 tab
+     全部失效,.table-wrap table 则是本段特异性更高反过来压掉了 --table-size 变量。
+     也就是说 600-1024 这个声明范围里,有一半是死代码。
+     把上界收到 767,让「声明范围」等于「实际生效范围」,重叠彻底消失:
+       ≤599   手机段   |  600-767 本段(平板竖屏/横屏)  |  ≥768 桌面段
+     768 以上想调的值一律放到桌面段,不要再往本段加。 */
   /* =================================================== */
-  @media (min-width: 600px) and (max-width: 1024px) {
+  @media (min-width: 600px) and (max-width: 767px) {
     /* 整体字号 +1.5px,易读 */
     body{ font-size:15.5px; }
     /* section padding 加大,内容呼吸感 */
@@ -475,10 +485,7 @@
     /* 1-col 网格:避免桌面 3-col 在移动屏过挤 */
     #content{ display:grid; grid-template-columns:minmax(0,1fr); gap:14px; }
     #content > section.span-2{grid-column:1; min-width:0; }
-    /* KPI banner:2 列(原本 3×3,在移动端 2×4 更易读) */
-    section.kpi-strip .kpi-row{
-      grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px;
-    }
+    /* KPI banner 的列数不在本段写,统一交给文件末尾的 KPI STRIP LADDER */
     .kpi{ padding:14px 16px; min-height:96px; }
     .kpi .lbl{ font-size:14.5px; }
     .kpi .val{ font-size:22px; }
@@ -487,8 +494,9 @@
     .table-wrap table{ font-size:13.5px; }
     .table-wrap th, .table-wrap td{ padding:8px 10px; }
     .table-wrap thead th{ padding:9px 10px; font-size:12px; }
-    /* 折线图 / 柱状图:合理高度(避免过大占屏) */
-    .chart.chart-line{ height:280px !important; }
+    /* 折线图高度:见文件末尾 CHART HEIGHT LADDER。240px 与 768-991 同档,
+       原来这里是 280px,导致 700px 平板的图比 900px 笔记本还高(反常) */
+    .chart.chart-line{ height:240px !important; }
     /* event-kpi:2 列(原本 auto-fill 220px minmax 4 列,移动端 2 列) */
     .event-kpi-grid{ grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:10px; }
     .event-kpi{ padding:14px 16px; min-height:96px; }
@@ -528,16 +536,10 @@
     header.top p{font-size:14px; line-height:1.65;}
     .tag{font-size:12.5px; padding:2px 10px;}
 
-    /* KPI strip: 全宽 banner
-       1920 大屏(>1600)→ 8 个一行(1800/8≈225px,数字紧凑但可读)
-       桌面 768+ 全部 3×3 (8+1 空,卡宽 230-380 渐进)
-       ≤767 走 mobile(2×4,8 整齐) */
+    /* KPI 卡片外观 + 段内非 banner 的 .kpi-row 基线(2 列)。
+       banner(「一、盘前关键关注」这类 type:kpi 段)的列数按分辨率分档,
+       见文件末尾 KPI STRIP LADDER —— 别在这里写,会被后面的 @media 顺序坑 */
     .kpi-row{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; margin-top:0;}
-    section.kpi-strip .kpi-row{
-      display:grid;
-      grid-template-columns:repeat(3, minmax(0,1fr));
-      gap:8px;
-    }
     .kpi{padding:7px 10px;}
     .kpi .lbl{font-size:var(--kpi-lbl);}
     .kpi .val{font-size:var(--kpi-val);}
@@ -595,16 +597,13 @@
     section.span-2 > .chart{
       flex:0 0 auto; min-height:0;
     }
-    /* line chart 统一高度 320px(取所有 line chart 中最高的)— 跨断点统一 */
+    /* line chart 基准高度 320px(取所有 line chart 中最高的)。
+       1200px 以下的分档、以及 1600-1919 的例外,统一见文件末尾
+       CHART HEIGHT LADDER —— 这里不要再加 @media,加在这段里面会被
+       外层 min-width:768px 卡住(原来的 max-width:767/479 两条就是这么变死代码的) */
     .chart.chart-line, .chart-line{
       height: 320px !important;
     }
-    @media (min-width: 1600px) and (max-width: 1919px) { .chart.chart-line{ height: 300px !important; } }
-    @media (min-width: 1200px) and (max-width: 1399px) { .chart.chart-line{ height: 280px !important; } }
-    @media (min-width: 992px) and (max-width: 1199px)  { .chart.chart-line{ height: 260px !important; } }
-    @media (min-width: 768px) and (max-width: 991px)   { .chart.chart-line{ height: 240px !important; } }
-    @media (max-width: 767px)                          { .chart.chart-line{ height: 220px !important; } }
-    @media (max-width: 479px)                          { .chart.chart-line{ height: 200px !important; } }
 
     /* 非 has-chart section:把 note 推到底 */
     section:not(.has-chart) > details.note{
@@ -672,11 +671,11 @@
       --table-size: 13px;
       --h2-size: 14.5px;
     }
-    /* 切 2-col: 外层 #content 改 2-col;KPI banner 保持 3×3 (基线已设) */
+    /* 切 2-col: 外层 #content 改 2-col;KPI banner 2×3 由末尾的 LADDER 给 */
     #content{ grid-template-columns: repeat(2, minmax(0,1fr)); }
   }
 
-  /* 768-991: 平板,2-col 更紧凑,KPI 3×3 保持 */
+  /* 768-991: 平板,2-col 更紧凑 */
   @media (min-width: 768px) and (max-width: 991px) {
     :root {
       --wrap-pad: 44px 14px 14px;
@@ -691,6 +690,50 @@
     }
     #content{ grid-template-columns: repeat(2, minmax(0,1fr)); }
   }
+
+  /* =================================================== */
+  /* ===== RESPONSIVE LADDERS ==========================
+     收在文件末尾、按断点单向覆盖的两张阶梯表。放在这里的唯一原因:
+     散落在各段里的同选择器规则互相按「源码在后」覆盖,量过才知道有多处
+     是死代码(见上面平板段和 768 段里被删掉的那几条)。要改档位只改这里。 */
+
+  /* ----- KPI STRIP LADDER:banner 列数 -----
+     「一、盘前关键关注」等 type:kpi 段 = 全宽 banner + 6 张卡。
+     切点定在 1200px,跟全站其他东西对齐,不另立门户:
+       - #content 正好是 1200px 从 2 列切到 3 列
+       - --kpi-val 正好是 1200px 从 17px 切到 18px
+     跟着 #content 走,横幅和下方 section 网格的列节奏就一致了。
+       <1200px: 2 列 → 3 行 × 2 列
+       ≥1200px: 3 列 → 2 行 × 3 列
+     早先试过 1025px 当切点(那时 768-1024 被桌面段抢成 3 列,卡只剩 228px)。
+     1025 那个数字是当时错误的产物,现在没有理由保留。 */
+  @media (min-width: 1200px) {
+    section.kpi-strip .kpi-row{
+      grid-template-columns:repeat(3, minmax(0,1fr));
+      gap:8px;
+    }
+  }
+  @media (max-width: 1199px) {
+    section.kpi-strip .kpi-row{
+      grid-template-columns:repeat(2, minmax(0,1fr));
+      gap:10px;
+    }
+  }
+
+  /* ----- CHART HEIGHT LADDER:折线图高度 -----
+     基准 320px 在 768 段里(取所有 line chart 里最高的那个),这里只收窄。
+     档位刻意保持单调 —— 视口越宽,图越高:
+       ≤599px   240px  (手机段)
+       600-767  240px  (平板段,原来 280px,比 768-991 还高,反常)
+       768-991  240px
+       992-1199 260px
+       1200-1399 280px
+       ≥1400px  320px  (基准)
+     原来 1600-1919 单独压到 300px,比它左边的 1400-1599(320px)还矮 ——
+     视口更宽反而图更小,已删除,1600 以上统一走 320px。 */
+  @media (min-width: 1200px) and (max-width: 1399px) { .chart.chart-line{ height:280px !important; } }
+  @media (min-width: 992px)  and (max-width: 1199px) { .chart.chart-line{ height:260px !important; } }
+  @media (min-width: 768px)  and (max-width: 991px)  { .chart.chart-line{ height:240px !important; } }
 </style>
 </head>
 <body>
