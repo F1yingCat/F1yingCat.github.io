@@ -18,10 +18,11 @@
 
    Fields: cn title / desc summary / lab label / date / words / href
    Order: createdDate ascending (old -> new), matching the archive layout.
-   Posts at generation time: 3
+   Posts at generation time: 4
    ============================================================ */
 window.POSTS = [
     { cn:'Origin of everything', desc:'This is how everything start.。', lab:'documentation', date:'2025-11-13', words:29, href:'post/Origin%20of%20everything.html' },
     { cn:'好多bug啊。。', desc:'So many bugs。', lab:'bug', date:'2026-08-27', words:12, href:'post/hao-duo-bug-a-%E3%80%82%E3%80%82.html' },
-    { cn:'MarketViewer 市场速览', desc:'每日于 北京时间09:03 和 北京时间19:30 分别更新盘前速览和盘后总结。', lab:'documentation', date:'2026-10-02', words:85, href:'post/MarketViewer%20-shi-chang-su-lan.html' }
+    { cn:'MarketViewer 市场速览', desc:'每日于 北京时间09:03 和 北京时间19:30 分别更新盘前速览和盘后总结。', lab:'documentation', date:'2026-10-02', words:85, href:'post/MarketViewer%20-shi-chang-su-lan.html' },
+    { cn:'How to make ETF Back test Workbench?', desc:'So HARD.。', lab:'documentation', date:'2026-10-05', words:8, href:'post/How%20to%20make%20ETF%20Back%20test%20Workbench-.html' }
 ];

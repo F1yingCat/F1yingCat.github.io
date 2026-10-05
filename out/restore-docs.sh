@@ -10,10 +10,16 @@
 #   Those are exactly the files we hand-maintain under static/.
 #   Gmeek also has its own deploy job, so the reset used to be PUBLISHED too.
 #
-#   market-viewer-sync.yml already repairs this afterwards (it triggers on
+#   market-viewer-sync.yml also repairs this afterwards (it triggers on
 #   Gmeek's workflow_run), but that leaves a window where the reset is live,
 #   and its condition is `workflow_run.conclusion != 'failure'` -- so if Gmeek
 #   fails, the repair is skipped too and the reset sticks.
+#
+#   NB: that workflow_run trigger used to name "Gmeek" (the FILENAME) while
+#   Gmeek.yml's `name:` is "build Gmeek", so it never fired and the repair
+#   below never happened. It is fixed now, but this script must stay: the
+#   workflow is a backstop, this is the thing that actually guarantees the
+#   reset never reaches git or the site.
 #
 #   So this script is called from INSIDE Gmeek.yml, after the docs copy and
 #   before its commit + deploy: nothing reset ever reaches git or the site.

@@ -42,6 +42,39 @@
       .replace(/"/g, '&quot;');
   }
 
+  /* ========== 工具：转义但保留成对的 <b> ==========
+   * 数据里的 chg / summary / note 允许带 <b>，所以以前是「先 esc、再把
+   * &lt;b&gt; 换回 <b>」。问题在于数据是每天自动生成的，标签偶尔不配平。
+   *
+   * 一个没闭合的 <b> 看着只是少一次强调，实际后果是整页塌版：HTML5 解析器
+   * 遇到开着的 <b> 遇到 </div>，会按 adoption agency 规则把这个格式化元素
+   * 重新塞进【下一个】块级元素里，于是它后面的兄弟节点全被卷进去。
+   * 2026-10-05 实测：标普500 的 chg 多了 1 个 <b>（16 开 15 闭），结果后面
+   * 5 张 KPI 卡全被吞进第一张的肚子里 —— .kpi-row 塌成一列，网格失效，
+   * -webkit-line-clamp 跟着失效（那张卡拉到 590px 高），整块横幅报废。
+   *
+   * 所以这里只放行配得上的 <b>：先数闭合标签够不够，配不上的开标签直接丢，
+   * 多出来的闭标签也丢。宁可少一段强调，也不让它改 DOM 结构。
+   * 嵌套 <b><b>x</b></b> 仍然照常输出，深度逻辑不变。 */
+  function escKeepBold(s) {
+    var e = esc(s);
+    var OPEN = '&lt;b&gt;';
+    var CLOSE = '&lt;/b&gt;';
+    // 闭合标签的总数 = 能配上的开标签上限
+    var budget = e.split(CLOSE).length - 1;
+    var depth = 0;
+    return e.replace(/&lt;\/?b&gt;/g, function (tag) {
+      if (tag === OPEN) {
+        if (budget <= 0) return '';   // 没有闭合标签与之配对，丢弃
+        budget--;
+        depth++;
+        return '<b>';
+      }
+      if (depth > 0) { depth--; return '</b>'; }
+      return '';                        // 落单的闭合标签，丢弃
+    });
+  }
+
   /* ========== 设备检测 ========== */
   function isDesktop() { return DESKTOP_MQ.matches; }
 
@@ -262,7 +295,8 @@
           chgDisplay = chgDisplay.replace(/▲/g, '▼');
         }
         // chg 支持 inline <b> 标签加粗(数据源可信,跟 summary 处理一致)
-        const chgHtml = esc(chgDisplay).replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
+        // 走 escKeepBold:标签不配平时丢弃落单的那个,而不是让解析器重排 DOM
+        const chgHtml = escKeepBold(chgDisplay);
         // 每个 KPI 卡片可点击,弹 popover 显示完整 chg + label + value
         const popIdx = summaryCounter++;
         return `<div class="kpi kpi-pop" data-kpi-idx="${popIdx}" title="点击查看完整内容">
@@ -314,13 +348,9 @@
       const end = cutAt > 100 ? cutAt + 1 : MAX_SUMMARY;
       summaryDisplay = summaryPlain.slice(0, end) + '…';
     }
-    const summaryHtml = summaryDisplay
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
-    // 全文 html(用于 popover)— esc 后保留 <b> 标签
-    const summaryFullHtml = summaryRaw
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
+    const summaryHtml = escKeepBold(summaryDisplay);
+    // 全文 html(用于 popover)— esc 后保留配平的 <b> 标签
+    const summaryFullHtml = escKeepBold(summaryRaw);
     // 按钮 + popover 放在 header 末尾(独立位置,移动端始终在 summary 下方的底部)
     // 用全局唯一 summaryCounter 避免多个页面(idx 重复)切换时 popover 串台
     // 先 +1 再用返回值,确保 button idx = popover idx(避免 ++ 副作用导致错位)
@@ -357,8 +387,7 @@
 
   function renderNote(note, source) {
     if (!note && !source) return '';
-    const noteHtml = note ? note.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>') : '';
+    const noteHtml = note ? escKeepBold(note) : '';
     const sourceHtml = source ? renderSource(source) : '';
     // popover 浮窗:trigger 和 body 用同一个 popover-id(避免用 .popover-note 父级
     // 因为后续 showPopover 会把 body appendChild 到 <body> 末尾脱离所有 SC)

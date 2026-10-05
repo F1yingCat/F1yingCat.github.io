@@ -97,6 +97,27 @@ jobs:
         run: |
           ./out/adopt-posts.ps1 -Docs docs -Base blogBase.json -Tpl out/post.tpl.html
 
+      # 本 workflow 的 deploy job 直接发布 docs/ 当前的样子，所以 docs/ 必须在
+      # 提交前就是对的。
+      #
+      # 以前少了这一步：新建 issue → Gmeek 写好 blogBase.json（含新文章）→
+      # restore-docs.sh 把 static/assets/posts.js 原样拷过来（还是旧的 3 篇）
+      # → deploy 把这份旧清单发上线。首页公告栏和归档页都不出现新文章。
+      #
+      # 原本指望 market-viewer-sync.yml 的 workflow_run 事后补救，但那条触发器
+      # 写的是 workflows: ["Gmeek"]，而本文件 name 是 "build Gmeek"，
+      # GitHub 按 name 匹配 —— 触发器从未成立，补救从未发生。
+      # （触发器名已改成 build Gmeek，但那只解决"下次"，不解决"这一次"，
+      #  所以这一步必须留着，让本 workflow 自己就闭环。）
+      #
+      # posts.js 写 docs/ 不写 static/：本 workflow 的 push 触发路径是
+      # static/**，往 static/ 提交会让 market-viewer-sync 反复自触发。
+      - name: Regenerate posts.js from the fresh blogBase.json
+        shell: pwsh
+        run: |
+          ./out/genposts.ps1 -Base blogBase.json -Out docs/assets/posts.js
+          echo "=== posts.js now lists ===" && grep -c "cn:" docs/assets/posts.js
+
       - name: update html
         run: |
           git config --local user.email "$(jq -r ".email" config.json)"
