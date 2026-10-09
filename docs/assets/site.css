@@ -258,7 +258,8 @@ body{
   background:var(--ink-2);border:2px solid var(--dusk);
   transition:border-color .12s,transform .08s steps(2);
 }
-.pager .pg:hover{border-color:var(--amber);transform:translate(-2px,-2px)}
+/* 位移交给 assets/glass.css 的 3D 倾斜 */
+.pager .pg:hover{border-color:var(--amber)}
 .pager .pg:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .pager .next{text-align:right}
 .pager .dir{display:block;font-family:'PS2P',monospace;font-size:8px;letter-spacing:.1em;color:var(--azure);margin-bottom:5px}

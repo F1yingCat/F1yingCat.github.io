@@ -3,7 +3,17 @@ param(
   [string]$Out,
   [int]$Width = 390,
   [int]$Height = 900,
-  [int]$DelayMs = 1200
+  [int]$DelayMs = 1200,
+  # Query string appended to the file:// URL. Resolve-Path would strip it, so
+  # the harness pages that switch behaviour on ?hover=id,x,y need it passed
+  # separately.
+  [string]$Query = '',
+  # shot.ps1 forces reduced-motion so animation states stop where they can be
+  # photographed. That is right for the cat and wrong for anything gated on
+  # motion preference -- the glass cards drop the 3D tilt under
+  # prefers-reduced-motion, so every tilt capture came back dead flat and looked
+  # like the feature was missing rather than disabled.
+  [switch]$AllowMotion
 )
 
 $ErrorActionPreference = 'Stop'
@@ -19,6 +29,7 @@ $file = (Resolve-Path $Path).Path
 # after their titles, so "MarketViewer -shi-chang-su-lan.html" is normal, and
 # passing the raw space makes the headless browser silently produce nothing.
 $url = 'file:///' + (($file -replace '\\', '/') -replace ' ', '%20')
+if ($Query -ne '') { $url = $url + '?' + $Query }
 $outDir = Split-Path -Parent $Out
 if ($outDir -and -not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir | Out-Null }
 
@@ -31,7 +42,6 @@ $args = @(
   '--no-sandbox',
   '--hide-scrollbars',
   '--force-device-scale-factor=1',
-  '--force-prefers-reduced-motion',
   '--disable-lcd-text',
   ('--window-size={0},{1}' -f $Width, $Height),
   ('--user-data-dir=' + $prof),
@@ -39,6 +49,7 @@ $args = @(
   ('--screenshot=' + $Out),
   $url
 )
+if (-not $AllowMotion) { $args = @('--force-prefers-reduced-motion') + $args }
 
 $logFile = Join-Path $env:TEMP 'shot-stderr.log'
 # Edge spits a benign "QQBrowser user data path not found" warning to stderr;

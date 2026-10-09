@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>橘猫巡场 · F1yingCat</title>
-<meta name="description" content="一只中华田园橘猫，带你逛完这个站点的每一个角落：博客、行情看板、每天 08:45 的盘前速览。">
+<meta name="description" content="一只中华田园橘猫，带你逛完这个站点的每一个角落：博客、行情看板、每天 09:03 的盘前速览。">
 <meta property="og:title" content="橘猫巡场 · F1yingCat">
 <meta property="og:description" content="一只中华田园橘猫，带你逛完这个站点的每一个角落。">
 <meta property="og:type" content="website">
@@ -146,6 +146,17 @@ canvas{display:block}
   --padb:15px;
   padding:16px 18px var(--padb);
   opacity:0;transition:opacity .22s, visibility .22s;
+  /* 视差的横向位移走【独立的 translate 属性】，transform 留给 assets/glass.css
+     的 3D 倾斜。规范里最终矩阵是 translate × rotate × scale × transform，
+     两条动作自动叠成一条，谁也冲不掉谁。
+     以前 positionPanels() 每帧直接写 el.style.transform=translateX(...)，
+     而 glass.css 的 .glass.tilt 也要写 transform —— 后写的把先写的整条盖掉，
+     面板的视差会被冻住。再往前一版把这个位移挂在自定义属性 --glass-x 上，
+     想让它排在 transform 最前面，方向对，但自定义属性【会继承】：面板内部的
+     纸条卡把同一份位移继承了过去，卡片自己再套一遍，整排卡片被推出面板
+     772px、被上面的 overflow-x:hidden 裁掉，公告栏大框只剩标题和正文。
+     translate 属性不继承，才是这条位移该待的地方。 */
+  translate:var(--px,0px);
 }
 
 /* 内容被折叠时的提示条。用 position:sticky 钉在可视区底缘，滚动到底自然落位；
@@ -223,7 +234,9 @@ canvas{display:block}
   border:2px solid #000;box-shadow:3px 3px 0 rgba(0,0,0,.5);
   transition:transform .08s steps(2),box-shadow .08s steps(2);
 }
-.boardlist a:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 rgba(0,0,0,.5)}
+/* 位移交给 assets/glass.css 的 3D 倾斜了。这里只留硬投影变大的那一半：
+   卡片现在跟着光标转，位移再叠上去就是双重动效，读起来是"抖"而不是"亮"。 */
+.boardlist a:hover{box-shadow:5px 5px 0 rgba(0,0,0,.5)}
 .boardlist a:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
 /* 图钉：钉头压在纸条上沿 */
 .boardlist .pinhead{
@@ -261,7 +274,7 @@ canvas{display:block}
   border-left:4px solid var(--azure);
   transition:border-color .12s,transform .08s steps(2);
 }
-.chanlist a:hover{border-color:var(--amber);border-left-color:var(--amber);transform:translate(-2px,-2px)}
+.chanlist a:hover{border-color:var(--amber);border-left-color:var(--amber)}
 .chanlist a:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .chanlist .when{grid-column:1/2;font-family:'PS2P',monospace;font-size:7px;letter-spacing:.06em;color:var(--stone)}
 .chanlist .go{grid-column:2/3;grid-row:1/3;font-family:'PS2P',monospace;font-size:9px;color:var(--orange)}
@@ -302,7 +315,7 @@ table.q .up{color:var(--up)} table.q .down{color:var(--down)} table.q .flat{colo
   background:var(--ink);border:2px solid var(--dusk);
   transition:border-color .12s,transform .08s steps(2);
 }
-.linklist a:hover{border-color:var(--azure);transform:translate(-2px,-2px)}
+.linklist a:hover{border-color:var(--azure)}
 .linklist a:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .linklist .en{font-family:'PS2P',monospace;font-size:7px;letter-spacing:.1em;color:var(--azure);display:block;margin-bottom:4px}
 .linklist .cn{font-size:17px;font-weight:800;color:var(--cream);display:block;line-height:1.3}
@@ -341,6 +354,7 @@ table.q .up{color:var(--up)} table.q .down{color:var(--down)} table.q .flat{colo
 }
 @media (prefers-reduced-motion:reduce){.panel,.sprite{transition:none}}
 </style>
+  <link rel="stylesheet" href="assets/glass.css">
 </head>
 <body>
 <div class="game" id="game">
@@ -648,7 +662,10 @@ var PORTAL = {
   hero:{
     kicker:'AREA 0 · NIGHT SHIFT',
     h1:'今晚的巡逻',
-    sub:'CAT PATROL · 23:40',
+    /* 时间是活的：<time> 由 tickClock() 每秒填（时钟那套在本文件末尾），
+       和 HUD 那个时钟是同一份。里面先放 --:-- 只是占位，
+       boot() 里 buildPanels() 之后立刻会被填上 */
+    sub:'CAT PATROL · <time id="heroClock">--:--</time>',
     lede:'猫叼着钥匙出门巡逻。',
     cta:[
       {t:'出门巡逻', href:'#z1', primary:true},
@@ -693,7 +710,7 @@ var PORTAL = {
      图表全硬编码、echarts 还从 CDN 拉；盘前速览早就由看板里那一栏
      （data/premarket/latest.json）接手了，删掉零损失 */
   channels:[
-    {cn:'盘前速览', en:'PRE-MARKET',  desc:'开盘前的一页，08:45 自动更新', href:'MarketViewer.html#premarket',  when:'08:45'},
+    {cn:'盘前速览', en:'PRE-MARKET',  desc:'开盘前的一页，09:03 自动更新', href:'MarketViewer.html#premarket',  when:'09:03'},
     {cn:'盘中观察', en:'INTRADAY',    desc:'盘中直播，看板里切到这一栏',   href:'MarketViewer.html#intraday',  when:'09:30-16:00'},
     {cn:'盘后总结', en:'POST-MARKET', desc:'收盘之后的那一页',            href:'MarketViewer.html#postmarket', when:'收盘后'}
   ],
@@ -2521,7 +2538,7 @@ function positionPanels(){
       /* 窄屏：面板变成底部抽屉，场景和猫留在上半屏 */
       el.style.left='8px'; el.style.right='8px'; el.style.width='auto';
       el.style.top='auto'; el.style.bottom='46px';
-      el.style.transform='none';
+      el.style.setProperty('--px','0px');
     } else {
       var w=el.offsetWidth, hgt=el.offsetHeight;
       el.style.left='0'; el.style.right='auto'; el.style.width='';
@@ -2541,7 +2558,7 @@ function positionPanels(){
       var catRight=(CAT_SX+40)*S;
       var lo=Math.max(16, Math.min(catRight+30, hi));
       var x=Math.max(lo, Math.min(hi, hi+par));
-      el.style.transform='translateX('+Math.round(x)+'px)';
+      el.style.setProperty('--px',Math.round(x)+'px');
       /* 垂直：顶边对齐上三分线，再夹在地平线之上，不许压到地面 */
       var top=Math.max(64, Math.min(view.vh*0.30, gy-24-hgt));
       el.style.top=Math.round(top)+'px';
@@ -2810,21 +2827,32 @@ function boot(){
      节流到 1Hz 一次，正好够用，而且不占每帧的预算。
      窄屏只留 HH:MM —— 420px 宽塞不下日期，日期放在 datetime 属性里，
      读屏和"复制链接"拿到的仍然是完整时间戳 */
-  (function(){
+  /* 时钟。挂在 setInterval 上而不是 frame() 里：frame 是 rAF 驱动的，
+     标签页切到后台时 rAF 停摆，时钟会跟着停；setInterval 在后台会被
+     节流到 1Hz 一次，正好够用，而且不占每帧的预算。
+     窄屏只留 HH:MM —— 420px 宽塞不下日期，日期放在 datetime 属性里，
+     读屏和"复制链接"拿到的仍然是完整时间戳。
+
+     首屏标题面板里那行 "CAT PATROL · HH:MM" 用的是同一份时间，不再是写死的
+     23:40。两处都在这里更新，所以这个函数不能关在 IIFE 里——buildPanels()
+     在它之后才把 #heroClock 插进 DOM，得从外面能再叫一次。 */
+  function p2(n){ return (n<10?'0':'')+n; }
+  function tickClock(){
     var ce=document.getElementById('clock');
-    function p2(n){ return (n<10?'0':'')+n; }
-    function tick(){
-      var d=new Date(), narrow=innerWidth<=860;
-      ce.textContent = narrow
-        ? p2(d.getHours())+':'+p2(d.getMinutes())
-        : d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())
-          +' '+p2(d.getHours())+':'+p2(d.getMinutes());
-      ce.setAttribute('datetime', d.toISOString().slice(0,19));
-    }
-    tick();
-    setInterval(tick, 1000);
-    addEventListener('resize', tick);
-  })();
+    var d=new Date(), narrow=innerWidth<=860;
+    var hm=p2(d.getHours())+':'+p2(d.getMinutes());
+    var iso=d.toISOString().slice(0,19);
+    ce.textContent = narrow
+      ? hm
+      : d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())+' '+hm;
+    ce.setAttribute('datetime', iso);
+    /* 每次现查：#heroClock 是 buildPanels() 才建出来的，第一次 tick 时还不存在 */
+    var he=document.getElementById('heroClock');
+    if (he){ he.textContent=hm; he.setAttribute('datetime', iso); }
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+  addEventListener('resize', tickClock);
 
   /* 底下的进度条刻度：原来是写死在 HTML 里的四个 div（装饰，摸不着）。
      改成真按钮：<b> 是悬停时浮出来的区名，方块本身是 16px 的硬边像素块，
@@ -2836,6 +2864,8 @@ function boot(){
     }).join(''));
 
   buildPanels();
+  /* 面板里的标题时间刚插进来，立刻补一次，别让它以 --:-- 挂一秒 */
+  tickClock();
   wire();
 
   /* 深链：#z2 / ?z=2 直接把猫放到对应区域（也可分享链接到某个区） */
@@ -2854,5 +2884,6 @@ function boot(){
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
 else boot();
 </script>
+  <script src="assets/glass.js"></script>
 </body>
 </html>

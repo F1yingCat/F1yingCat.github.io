@@ -1,0 +1,131 @@
+/* ============================================================
+   glass.css -- 像素风磨砂玻璃卡片
+   ------------------------------------------------------------
+   和 glass.js 配套，改一处两边都要看。
+
+   结构，从下往上：
+     元素本身  磨砂玻璃：半透明底 + backdrop-filter 模糊 + 硬边边框
+     悬停时    边框整圈换成琥珀色（原来这里还有一团跟随光标的像素光斑，
+               按要求删掉了，见下面"删掉的那一层"）
+
+   删掉的那一层：内部光斑 ::before，以及用同一张光斑精灵做 mask 的
+   "邻近边框提亮" ::after。边框提亮本身留下了，只是简化成整圈换色——
+   "只有靠近光标那一段亮"这个特性离不开那张精灵，去掉光斑就没有了。
+   少一层伪元素，玻璃也从三明治变回一张纸。
+
+   position:relative 刻意【不】写在 .glass 上。
+   两个时代各踩过一次大坑，都写在这里免得再犯：
+     一是伪元素需要定位祖先，`position:relative` 写在 .glass 上会撞掉
+     首页 .panel 的 position:absolute（两者同为 (0,1,0)，而 glass.css 是首页
+     最后加载的那个——四个区域大框从 absolute 变成 relative，整个横向世界
+     的定位塌了，实测全跑到 x=0）。归档页当时没中招，只因为那里 glass.css
+     排在页面内联 style 之前；两页加载顺序不同，这类事最难查。
+     二是玻璃底本身：.glass{background:var(--glass-tint)} 和
+     .btn-primary{background:var(--orange)} 同为 (0,1,0)，glass.css 后加载
+     所以赢了——首页「出门巡逻」按钮的橙色就这么没了，读数是
+     rgba(30,26,46,.6)。所以有身份色的面要显式还回来，见下面的"身份色"。
+   ============================================================ */
+
+:root{
+  --glass-blur:7px;
+  --glass-tint:rgba(30,26,46,.60);
+  --glass-edge:rgba(126,116,170,.55);
+  --rx:0deg; --ry:0deg;
+}
+
+/* ---------- 材质 ---------- */
+.glass{
+  isolation:isolate;
+  background:var(--glass-tint);
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(1.25);
+          backdrop-filter:blur(var(--glass-blur)) saturate(1.25);
+  border-color:var(--glass-edge);
+  transition:box-shadow .16s steps(2),border-color .18s linear,background-color .2s linear;
+}
+
+/* 身份色。
+   .glass 的玻璃底是 (0,1,0)，和这些面自己的规则平手，而 glass.css 在首页是
+   最后加载的那个——谁赢看加载顺序，不看谁更该赢。所以凡是【靠底色认得出身份】
+   的面，都在这里用 (0,2,0) 把自己要的颜色再声明一次。
+
+   只还 .btn 这一族是有意的：.card（--ink-2）和 .panel（--ink-2）本来就是深紫，
+   和玻璃底 rgba(30,26,46,.60) 是同一个色系，吃掉之后看不出来，而把它们还原成
+   不透明底就等于把"大框也要做成玻璃"这件事退回去了——那一条是要保留的。
+   .btn 不还也看不出来（同样是深色），但主按钮是全站唯一一处"橙色的东西"，
+   没有了首页就少了一个视觉落点。 */
+.btn.glass{ background:var(--ink); border-color:var(--cream); }
+.btn-primary.glass{ background:var(--orange); border-color:var(--orange); color:var(--ink); }
+
+/* 上面那两条必须连着悬停态一起写。
+   .btn:hover{background:var(--cream)} 在 index.html 里，和 .btn.glass 同为 (0,2,0)，
+   而 glass.css 是最后加载的那个——只还颜色不还悬停，按钮就变成"永远不变色"，
+   比改之前还死板。所以这里用 (0,3,0) 把站点自己那套实心悬停接回来：
+   普通按钮翻成奶白、主按钮翻成琥珀，正是这一轮改动之前的手感。 */
+.btn.glass:hover,.btn.glass.glass-live{ background:var(--cream); color:var(--ink); }
+.btn-primary.glass:hover,.btn-primary.glass.glass-live{ background:var(--amber); }
+
+/* position:relative 刻意【不】写在 .glass 上（理由见文件头）。
+   只给【本来就没有定位】的面补上。已经有定位的四个
+   (.boardlist a / .plate / .pip / .panel) 各自由自己的样式表负责。 */
+.btn,.btn-primary,.card,.znav button,.save a,.pager .pg,
+.chanlist a,.linklist a,.filters button{ position:relative; }
+
+/* backdrop-filter 不认的时候退回不透明底，玻璃感少一半但内容一定看得见 */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .glass{ background:rgba(30,26,46,.92); }
+}
+
+/* 变量不许往下漏。
+   --rx / --ry 是 glass.js 写在【被悬停的那一个元素】上的，而自定义属性是会
+   继承的。悬停一个大框时，它内部每张玻璃卡都会继承到同一组角度跟着一起歪。
+   同一个坑先在面板视差上出过更严重的一次：位移挂在 --glass-x 上，纸条卡把
+   546px 一起继承过去，卡片自己再套一遍 transform，整排卡片被推出面板 772px、
+   被 overflow-x:hidden 裁掉。现在面板视差走【独立的 translate 属性】（不继承），
+   角度这边在玻璃面以下统一清零。glass.js 写的是内联样式，仍然压得住这条规则。 */
+.glass *{ --rx:0deg; --ry:0deg; }
+
+/* 3D 倾斜。
+   首页 .panel 每帧被 positionPanels() 写一个横向视差位移，走独立的 translate
+   属性（不继承，见上）。规范里最终矩阵是 translate × rotate × scale × transform，
+   两条动作自动叠成一条，谁也冲不掉谁。 */
+.glass.tilt{
+  transform:perspective(700px) rotateX(var(--rx)) rotateY(var(--ry));
+}
+
+/* ---------- 悬停：边框整圈提亮 + 倾斜到位 ---------- */
+.glass:hover,
+.glass.glass-live{ border-color:var(--amber); }
+
+/* 悬停时不给 transition：卡片要一比一贴住指针。
+   移动端的 :hover 会粘住，所以这两条收在 hover:hover 里。 */
+@media (hover:hover){
+  .glass.tilt:hover,
+  .glass.tilt.glass-live{ transition:none; }
+
+  /* 移出：过渡在这里才生效，卡片自己走回原位 */
+  .glass.tilt:not(:hover):not(.glass-live){
+    transition:transform .34s cubic-bezier(.2,.8,.2,1),
+               box-shadow .16s steps(2),
+               border-color .18s linear,
+               background-color .2s linear;
+  }
+}
+
+/* 键盘 focus 也要看得见落点，否则 tab 过来只有材质变了、不知道焦点在哪 */
+.glass:focus-visible{
+  outline:3px solid var(--amber);
+  outline-offset:2px;
+}
+
+/* 按下：卡片压平并往下右挪一格。单独写这条而不是靠各页面原来的
+   .btn:active{transform:translate(3px,3px)}——那条和 .glass.tilt 同为
+   (0,2,0)，谁赢看加载顺序，而 glass.css 是最后加载的那个，
+   原来的按压效果会被吃掉。 */
+.glass.tilt:active{ transform:perspective(700px) translate(3px,3px); }
+
+/* ---------- 无障碍 ---------- */
+@media (prefers-reduced-motion:reduce){
+  /* 关掉的是倾斜。面板的视差走独立的 translate 属性，不受影响，镜头还在。 */
+  .glass.tilt{ transform:none !important; }
+  .glass{ transition:none !important; }
+}

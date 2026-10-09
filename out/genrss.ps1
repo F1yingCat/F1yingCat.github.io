@@ -23,6 +23,19 @@
     between. The channel prose therefore stays editable in place, exactly like
     the hand-written pages that out/restore-docs.sh protects.
 
+  RUN IT ON BOTH FILES LOCALLY, NOT ONLY docs/
+    CI writes docs/rss.xml alone, because its push trigger watches static/** and
+    committing back into static/ would re-trigger it forever. The side effect is
+    that static/rss.xml never gets refreshed in CI, so it drifts: a new issue
+    from 2026-10-05 was in docs/ and in blogBase.json, and not in static/.
+
+    Then out/restore-docs.sh copies static/rss.xml over docs/rss.xml and the
+    feed silently loses the new post until the genrss step two lines later puts
+    it back. Locally, where nobody runs that step, it just stays wrong -- and
+    that is how this file came to be three items behind on 2026-10-08.
+
+    So: local default writes both. CI passes -Out docs/rss.xml explicitly.
+
   ORDER
     Newest first. RSS readers assume that, and the hand-written file had it.
     Ties fall back to createdAt ascending so the order is total, not arbitrary.
