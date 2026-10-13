@@ -54,18 +54,69 @@ jobs:
           cp -a /opt/Gmeek/backup ${{ github.workspace }}
           cp /opt/Gmeek/blogBase.json ${{ github.workspace }}
 
-      - name: Protect premarket.html
+      # 把我们手工维护的页面【立刻】放回去。
+      #
+      # 这一步以前不存在，于是每次编辑 issue 都会：Gmeek 用它自己的版本重写
+      # docs/index.html、docs/MarketViewer.html、docs/assets/render.js、docs/data/*
+      # （历史提交 6276c3c 就是这么干的），紧接着下面的 `git add . && git commit`
+      # 把重置提交进去，而本文件末尾那个 deploy job 又把重置版【发上线】。
+      #
+      # market-viewer-sync.yml 事后能修好，但那中间有个窗口重置版是活的；
+      # 更糟的是它的条件是 workflow_run.conclusion != 'failure' ——
+      # Gmeek 一失败，修复也跟着跳过，重置就留下了。
+      #
+      # 放在这里（docs 拷贝之后、commit 和 deploy 之前），重置就永远到不了
+      # git、也永远不会被发布。Gmeek 失败时本 job 直接失败，末尾的 deploy
+      # 不会跑，线上保留上一次的好版本 —— 这才是安全的失败方向。
+      #
+      # 故意不写 continue-on-error：还原失败还继续部署，等于把重置发出去。
+      #
+      # 真正的通用规则：手工维护的内容一律放 static/，由本步骤和
+      # market-viewer-sync.yml 共用的 out/restore-docs.sh 还原。
+      # 直接手写进 docs/ 而不放进 static/ 的文件不会有人替它兜底。
+      - name: Restore hand-written pages
         run: |
-          # Gmeek 在 runAll 模式下会重写整个 docs/，把 Mavis 推送的
-          # docs/premarket.html 从 working tree 中删掉。这里从 git HEAD
-          # 把它恢复回来，保证 commit 后 GitHub Pages 仍然有盘前速览页面。
-          # 注意：要求 HEAD 中已有此文件（Mavis 已经推过），否则跳过。
-          if git cat-file -e HEAD:docs/premarket.html 2>/dev/null; then
-            git checkout HEAD -- docs/premarket.html
-            echo "✓ premarket.html 已从 HEAD 恢复"
-          else
-            echo "⚠ HEAD 中无 premarket.html，跳过恢复"
-          fi
+          bash ./out/restore-docs.sh
+          echo "=== docs after restore ===" && ls docs/ && ls docs/assets/ docs/data/
+
+      # 模板接管：把 Gmeek 用 Primer 模板生成的 docs/post/*.html 换成我们自己的版式
+      # （HUD / kicker / 上下篇 / 像素猫配图）。
+      #
+      # 为什么必须放在本 workflow 里、而不是只靠 market-viewer-sync.yml：
+      # 这个 job 末尾会自己 upload-pages-artifact 然后 deploy，也就是说它
+      # 【直接发布的是 docs/ 当前的样子】。sync 是 workflow_run 触发的后置修复，
+      # 在那之前有一个窗口，线上躺着的已经是 Gmeek 原版页面了。
+      #
+      # 同样不加 continue-on-error：接管失败还发版，等于把 Primer 页面发上线。
+      # 失败时这个 job 停住，线上保留上一次的好版本。
+      #
+      # 幂等：被接管过的页面带 out/adopt-posts.ps1 标记，脚本会跳过；
+      # Gmeek 每次重新生成它才会再次被接管，所以改 issue 里的正文照样能生效。
+      - name: Adopt our template for Gmeek post pages
+        shell: pwsh
+        run: |
+          ./out/adopt-posts.ps1 -Docs docs -Base blogBase.json -Tpl out/post.tpl.html
+
+      # 本 workflow 的 deploy job 直接发布 docs/ 当前的样子，所以 docs/ 必须在
+      # 提交前就是对的。
+      #
+      # 以前少了这一步：新建 issue → Gmeek 写好 blogBase.json（含新文章）→
+      # restore-docs.sh 把 static/assets/posts.js 原样拷过来（还是旧的 3 篇）
+      # → deploy 把这份旧清单发上线。首页公告栏和归档页都不出现新文章。
+      #
+      # 原本指望 market-viewer-sync.yml 的 workflow_run 事后补救，但那条触发器
+      # 写的是 workflows: ["Gmeek"]，而本文件 name 是 "build Gmeek"，
+      # GitHub 按 name 匹配 —— 触发器从未成立，补救从未发生。
+      # （触发器名已改成 build Gmeek，但那只解决"下次"，不解决"这一次"，
+      #  所以这一步必须留着，让本 workflow 自己就闭环。）
+      #
+      # posts.js 写 docs/ 不写 static/：本 workflow 的 push 触发路径是
+      # static/**，往 static/ 提交会让 market-viewer-sync 反复自触发。
+      - name: Regenerate posts.js from the fresh blogBase.json
+        shell: pwsh
+        run: |
+          ./out/genposts.ps1 -Base blogBase.json -Out docs/assets/posts.js
+          echo "=== posts.js now lists ===" && grep -c "cn:" docs/assets/posts.js
 
       - name: update html
         run: |

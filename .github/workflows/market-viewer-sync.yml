@@ -1,18 +1,37 @@
 name: Sync MarketViewer to docs
 
+# workflow 名字保持不变：pages-deploy.yml 用 workflow_run 按名字挂在这条上，
+# 改名会让部署链断掉。职责其实早就不止 MarketViewer 了，见下面的 cp 清单。
+
 on:
+  # 0. 手动触发 = "现在就修复一次"。
+  #    push 触发只认 static/**，而只改 docs/ 的提交（比如把 Gmeek 的重置改回来）
+  #    不会触发它，站点就停在坏的状态直到下一次 Gmeek 定时跑。
+  #    有了这个按钮，重置后可以立刻拉回，不用等。
+  workflow_dispatch:
+
   # 1. 当 static/ 下文件变化时触发（涵盖 Mavis 每天推数据）
   #    不要监听 docs/，否则 sync 自己 push 会自循环
   push:
     branches: [main]
     paths:
       - 'static/MarketViewer.html'
+      - 'static/index.html'
+      - 'static/tag.html'
+      - 'static/post/**'
+      - 'static/rss.xml'
       - 'static/assets/**'
       - 'static/data/**'
 
   # 2. Gmeek 跑完后触发（防止被它清空）
+  #    这里的字符串必须和 Gmeek.yml 里 `name:` 写的**一模一样**。
+  #    GitHub 匹配的是工作流的 name 字段，不是文件名 —— 写 "Gmeek"（文件名）
+  #    而 Gmeek.yml 的 name 是 "build Gmeek"，这条触发器就永远不成立。
+  #    后果是：新建 issue → Gmeek 写好 blogBase.json 和文章页 → 没人重跑
+  #    genposts.ps1 → posts.js 停在旧内容 → 公告栏和归档页都不出现新文章，
+  #    而且**没有任何报错**，只是"文章不显示"。
   workflow_run:
-    workflows: ["Gmeek"]
+    workflows: ["build Gmeek"]
     types: [completed]
 
 # 防止和 Gmeek 互相等待死锁
@@ -23,8 +42,9 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    # Gmeek 失败时也同步（万一 Gmeek 跑挂了我们也保持 MarketViewer 最新）
-    if: ${{ github.event_name == 'push' || github.event.workflow_run.conclusion != 'failure' }}
+    # Gmeek 失败时也同步（万一 Gmeek 跑挂了我们也保持页面最新）。
+    # workflow_dispatch 是手动修复，必须永远放行。
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion != 'failure' }}
     permissions:
       contents: write
     steps:
@@ -36,15 +56,68 @@ jobs:
 
       - name: Sync static → docs
         run: |
-          set -e
+          # 文件清单只写在 out/restore-docs.sh 一处，Gmeek.yml 也调它 ——
+          # 两边各写一份的话，总有一边漏掉某个页面，于是"一边还原、另一边又冲掉"。
+          #
+          # 本 workflow 是"有人直接 push static/"时唯一的还原路径；
+          # Gmeek 那条路已经由 Gmeek.yml 里的同名步骤在它自己 commit/deploy 之前处理了。
           mkdir -p docs
-          # 只同步 MarketViewer 相关文件，不影响 Gmeek 生成的文件
-          [ -f static/MarketViewer.html ] && cp static/MarketViewer.html docs/MarketViewer.html
-          [ -d static/assets ] && cp -r static/assets/. docs/assets/
-          [ -d static/data ] && cp -r static/data/. docs/data/
-          echo "=== docs/MarketViewer.html ===" && ls -la docs/MarketViewer.html
+          bash ./out/restore-docs.sh
+          echo "=== docs 根 ===" && ls docs/*.html docs/*.xml
+          echo "=== docs/post/ ===" && ls docs/post/
           echo "=== docs/assets/ ===" && ls docs/assets/
           echo "=== docs/data/ ===" && ls docs/data/
+
+      # 文章清单：由 out/genposts.ps1 从 blogBase.json 的 postListJson 重新生成。
+      #
+      # 为什么放在 static→docs 拷贝【之后】：Gmeek 刚跑完，仓库根的 blogBase.json
+      # 才是最新的文章清单，先把它落到 docs/assets/posts.js，再让部署带上。
+      # 放在拷贝之前会被 static/assets/ 里那份旧拷贝盖回去。
+      #
+      # 为什么写 docs/ 而不写 static/：这个 workflow 的 push 触发路径是 static/**，
+      # 在这里往 static/ 提交会再次触发自己，无限循环。
+      #
+      # 内容与 static/assets/posts.js 一致，两条路都留着：仓库里那份让 file:// 也能看，
+      # 这里这份保证即使仓库里那份忘了更新，部署出去的还是对的。
+      - name: Regenerate posts.js
+        shell: pwsh
+        # 故意不让它阻断部署：这步夹在 static→docs 拷贝和 Commit & Push 之间，
+        # 一旦失败，后面的提交步骤会整个被跳过，于是"生成器出 bug"会升级成
+        # "整个站点不再更新"——为了一个只影响文章清单的脚本，代价太大。
+        # 失败时的兜底是仓库里那份（可能稍旧的）posts.js，站点照常可用，
+        # 而 run 标红、日志里能看到报错。个人博客宁可少一次自动更新，不要全停。
+        continue-on-error: true
+        run: |
+          ./out/genposts.ps1 -Base blogBase.json -Out docs/assets/posts.js
+          echo "=== generated posts.js ===" && head -c 400 docs/assets/posts.js
+
+      # RSS 的 item 列表同样从 blogBase.json 生成。
+      #
+      # 为什么以前会漏：rss.xml 是手写的，规则实际是"你亲手写的文章进订阅，
+      # 从 issue 来的文章不进"。2026-10-02 那篇 MarketViewer 就是从 issue 来的，
+      # 于是站上 3 篇、订阅里 2 篇，而且**没有任何报错**——漏一篇订阅比漏一块
+      # 归档板更安静，读的人只会觉得"最近没更新"。
+      #
+      # 和 genposts 同一个位置的原因：blogBase.json 刚被 Gmeek 刷新过。
+      # 频道本身的文案（标题、描述、图片）仍然是手写的，脚本只替换 item 列表和
+      # lastBuildDate，所以要改措辞还是直接改 static/rss.xml。
+      - name: Regenerate rss.xml
+        shell: pwsh
+        # 和上面那步同一个理由：一份只影响订阅的生成物，不值得让整个站点停更。
+        continue-on-error: true
+        run: |
+          ./out/genrss.ps1 -Base blogBase.json -Out docs/rss.xml
+          echo "=== generated rss items ===" && grep -c '<item>' docs/rss.xml
+
+      # 模板接管的第二条路。Gmeek.yml 里已经有一份，但那份只在 Gmeek 自己
+      # commit/deploy 之前生效；这里是"只改 docs/"的提交（比如把 Gmeek 的重置
+      # 修回来、或手动 workflow_dispatch）之后唯一的还原手段。写两处不是为了
+      # 备份，是因为两条 workflow 的触发条件不同：push 到 static/ 时只有这条会跑，
+      # Gmeek 那条根本不触发。
+      - name: Adopt our template for Gmeek post pages
+        shell: pwsh
+        run: |
+          ./out/adopt-posts.ps1 -Docs docs -Base blogBase.json -Tpl out/post.tpl.html
 
       - name: Commit & Push
         run: |
@@ -52,7 +125,10 @@ jobs:
           git config user.email "bot@users.noreply.github.com"
           # 关键：解决 race condition。如果连续多次 push，HEAD 可能落后于 remote
           git pull --rebase --autostash || true
-          git add docs/MarketViewer.html docs/assets/ docs/data/
+          # git add 必须把上面 cp 的每一项都列全：只 commit 索引里有的文件，
+          # 没 add 的改动会留在 working tree，部署出去的还是旧版。
+          git add docs/MarketViewer.html docs/index.html docs/tag.html docs/rss.xml \
+                  docs/post/ docs/assets/ docs/data/
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else

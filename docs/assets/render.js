@@ -42,6 +42,39 @@
       .replace(/"/g, '&quot;');
   }
 
+  /* ========== 工具：转义但保留成对的 <b> ==========
+   * 数据里的 chg / summary / note 允许带 <b>，所以以前是「先 esc、再把
+   * &lt;b&gt; 换回 <b>」。问题在于数据是每天自动生成的，标签偶尔不配平。
+   *
+   * 一个没闭合的 <b> 看着只是少一次强调，实际后果是整页塌版：HTML5 解析器
+   * 遇到开着的 <b> 遇到 </div>，会按 adoption agency 规则把这个格式化元素
+   * 重新塞进【下一个】块级元素里，于是它后面的兄弟节点全被卷进去。
+   * 2026-10-05 实测：标普500 的 chg 多了 1 个 <b>（16 开 15 闭），结果后面
+   * 5 张 KPI 卡全被吞进第一张的肚子里 —— .kpi-row 塌成一列，网格失效，
+   * -webkit-line-clamp 跟着失效（那张卡拉到 590px 高），整块横幅报废。
+   *
+   * 所以这里只放行配得上的 <b>：先数闭合标签够不够，配不上的开标签直接丢，
+   * 多出来的闭标签也丢。宁可少一段强调，也不让它改 DOM 结构。
+   * 嵌套 <b><b>x</b></b> 仍然照常输出，深度逻辑不变。 */
+  function escKeepBold(s) {
+    var e = esc(s);
+    var OPEN = '&lt;b&gt;';
+    var CLOSE = '&lt;/b&gt;';
+    // 闭合标签的总数 = 能配上的开标签上限
+    var budget = e.split(CLOSE).length - 1;
+    var depth = 0;
+    return e.replace(/&lt;\/?b&gt;/g, function (tag) {
+      if (tag === OPEN) {
+        if (budget <= 0) return '';   // 没有闭合标签与之配对，丢弃
+        budget--;
+        depth++;
+        return '<b>';
+      }
+      if (depth > 0) { depth--; return '</b>'; }
+      return '';                        // 落单的闭合标签，丢弃
+    });
+  }
+
   /* ========== 设备检测 ========== */
   function isDesktop() { return DESKTOP_MQ.matches; }
 
@@ -161,15 +194,20 @@
     if (c.type === 'html') {
       return `<td${colCls ? ' class="'+esc(colCls)+'"' : ''}>${c.html || ''}</td>`;
     }
-    // dir 智能同步:▲ 自动 up,▼ 自动 down(避免颜色与符号冲突)
-    let dir = c.dir ? esc(c.dir) : '';
-    if (c.text && c.text.indexOf('▲') !== -1 && c.dir !== 'up') {
-      dir = 'up';
-    } else if (c.text && c.text.indexOf('▼') !== -1 && c.dir !== 'down') {
-      dir = 'down';
+    const dir = c.dir ? esc(c.dir) : '';
+    // ▲/▼ 符号跟 dir 一致:A 股金融习惯——红涨绿跌
+    // 例 CNH 数值方向 ▲(汇率数字涨)+ dir=down(人民币贬):
+    //   我们重写为 ▼ 让符号跟"对人民币贬值"语义一致(显示绿+▼)
+    // 例 DXY 数据方向 ▲+ dir=up(美元强势):
+    //   保持 ▲(▲+红,美元涨)
+    let displayText = c.text || '';
+    if (dir === 'up') {
+      displayText = displayText.replace(/▼/g, '▲');
+    } else if (dir === 'down') {
+      displayText = displayText.replace(/▲/g, '▼');
     }
     const classes = [dir, finalCls.trim()].filter(Boolean).join(' ');
-    return classes ? `<td class="${classes}">${esc(c.text || '')}</td>` : `<td>${esc(c.text || '')}</td>`;
+    return classes ? `<td class="${classes}">${esc(displayText)}</td>` : `<td>${esc(displayText || '')}</td>`;
   }
 
   function renderRow(row, columns) {
@@ -244,17 +282,21 @@
     if (!kpis || !kpis.length) return '';
     return '<div class="kpi-row">' +
       kpis.map(k => {
-        // dir 智能同步:▲ 自动 up(红),▼ 自动 down(绿)— 避免 AI 数据 ▲/▼ 与 dir 颜色不一致
-        // 例 CNH 数值方向 ▲(汇率数字涨) + dir=down(人民币贬值语义)— 颜色冲突
-        // 修法:以 ▲/▼ 符号为主,跟 ▲/▼ 一致,避免视觉冲突
+        // dir 智能同步 ▲/▼ 符号 — A 股习惯红涨绿跌
+        // dir=up:把 ▼ 改 ▲(▲+红)
+        // dir=down:把 ▲ 改 ▼(▼+绿)
+        // 例 CNH 数值方向 ▲(汇率数字涨)+ dir=down(人民币贬):
+        //   自动改为 ▼ + 绿(对人民币贬值,符合直觉)
         let dir = k.dir ? ` ${esc(k.dir)}` : '';
-        if (k.chg && k.chg.indexOf('▲') !== -1 && k.dir !== 'up') {
-          dir = ' up';
-        } else if (k.chg && k.chg.indexOf('▼') !== -1 && k.dir !== 'down') {
-          dir = ' down';
+        let chgDisplay = k.chg || '';
+        if (k.dir === 'up') {
+          chgDisplay = chgDisplay.replace(/▼/g, '▲');
+        } else if (k.dir === 'down') {
+          chgDisplay = chgDisplay.replace(/▲/g, '▼');
         }
         // chg 支持 inline <b> 标签加粗(数据源可信,跟 summary 处理一致)
-        const chgHtml = esc(k.chg).replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
+        // 走 escKeepBold:标签不配平时丢弃落单的那个,而不是让解析器重排 DOM
+        const chgHtml = escKeepBold(chgDisplay);
         // 每个 KPI 卡片可点击,弹 popover 显示完整 chg + label + value
         const popIdx = summaryCounter++;
         return `<div class="kpi kpi-pop" data-kpi-idx="${popIdx}" title="点击查看完整内容">
@@ -306,13 +348,9 @@
       const end = cutAt > 100 ? cutAt + 1 : MAX_SUMMARY;
       summaryDisplay = summaryPlain.slice(0, end) + '…';
     }
-    const summaryHtml = summaryDisplay
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
-    // 全文 html(用于 popover)— esc 后保留 <b> 标签
-    const summaryFullHtml = summaryRaw
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
+    const summaryHtml = escKeepBold(summaryDisplay);
+    // 全文 html(用于 popover)— esc 后保留配平的 <b> 标签
+    const summaryFullHtml = escKeepBold(summaryRaw);
     // 按钮 + popover 放在 header 末尾(独立位置,移动端始终在 summary 下方的底部)
     // 用全局唯一 summaryCounter 避免多个页面(idx 重复)切换时 popover 串台
     // 先 +1 再用返回值,确保 button idx = popover idx(避免 ++ 副作用导致错位)
@@ -349,8 +387,7 @@
 
   function renderNote(note, source) {
     if (!note && !source) return '';
-    const noteHtml = note ? note.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>') : '';
+    const noteHtml = note ? escKeepBold(note) : '';
     const sourceHtml = source ? renderSource(source) : '';
     // popover 浮窗:trigger 和 body 用同一个 popover-id(避免用 .popover-note 父级
     // 因为后续 showPopover 会把 body appendChild 到 <body> 末尾脱离所有 SC)
@@ -619,6 +656,36 @@
     </section>`;
   }
 
+  /* ========== 按 id 打开某一页：tab 点击 / 首屏 / hash 改动走同一条路径 ==========
+     三个时段原本是三个独立页面，统一到 MarketViewer 之后，站外入口
+     （首页时段卡片、文章页、RSS）都指向这一个文件，靠 #premarket /
+     #intraday / #postmarket 落到对应那一栏。 */
+  let PAGES = [];
+
+  function markActiveTab(id) {
+    ['floating-tabs', 'mobile-tabs'].forEach(sel => {
+      const el = document.getElementById(sel);
+      if (!el) return;
+      [...el.querySelectorAll('button')].forEach(b => b.classList.remove('active'));
+      const m = el.querySelector(`button[data-page="${id}"]`);
+      if (m) m.classList.add('active');
+    });
+  }
+
+  function openPageById(id, opts) {
+    const o = opts || {};
+    const page = PAGES.find(x => x.id === id) || PAGES[0];
+    if (!page) return Promise.resolve();
+    markActiveTab(page.id);
+    /* replaceState 而不是 location.hash=：每点一次 tab 就压一条历史不对，
+       浏览器"后退"应该真的离开这个页面，而不是在三个 tab 之间来回弹。
+       fromHash 时不再写回，否则会自己触发自己。 */
+    if (!o.fromHash && (location.hash || '').replace(/^#/, '') !== page.id) {
+      try { history.replaceState(null, '', '#' + page.id); } catch (e) { /* file:// 下可能受限 */ }
+    }
+    return loadPage(page);
+  }
+
   /* ========== Tab 切换（双容器：floating + mobile） ========== */
   function renderTabs(pages, activeId) {
     const makeBtn = (p) => {
@@ -647,16 +714,8 @@
     const onClick = (e) => {
       const btn = e.target.closest('button[data-page]');
       if (!btn) return;
-      const page = pages.find(x => x.id === btn.dataset.page);
-      if (!page) return;
-      // 同步 active 态到两个容器
-      [floating, mobile].forEach(el => {
-        if (!el) return;
-        [...el.querySelectorAll('button')].forEach(b => b.classList.remove('active'));
-        const match = el.querySelector(`button[data-page="${page.id}"]`);
-        if (match) match.classList.add('active');
-      });
-      loadPage(page);
+      if (!PAGES.some(x => x.id === btn.dataset.page)) return;
+      openPageById(btn.dataset.page);
     };
     if (floating) floating.onclick = onClick;
     if (mobile) mobile.onclick = onClick;
@@ -761,8 +820,16 @@
       showError('manifest.json 中没有 pages 字段或为空');
       return;
     }
-    renderTabs(manifest.pages, manifest.pages[0].id);
-    await loadPage(manifest.pages[0]);
+    PAGES = manifest.pages;
+    /* 站外入口带着 #premarket / #intraday / #postmarket 进来时直接落到那一栏；
+       hash 对不上（比如手敲了一个不存在的）就安静地回第一页，不报错 */
+    const want = (location.hash || '').replace(/^#/, '');
+    const start = PAGES.some(p => p.id === want) ? want : PAGES[0].id;
+    renderTabs(PAGES, start);
+    await openPageById(start, { fromHash: true });
+    window.addEventListener('hashchange', () => {
+      openPageById((location.hash || '').replace(/^#/, ''), { fromHash: true });
+    });
   }
 
   // 全局 popover 浮窗行为:点击 trigger 切换,点击别处关闭
