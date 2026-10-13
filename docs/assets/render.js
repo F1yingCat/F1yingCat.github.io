@@ -21,7 +21,7 @@
 
   const DESKTOP_MQ = window.matchMedia('(min-width: 768px)');
   // 所有 section 都是 1 col 卡片,宽度相等 — 不再有全宽 banner
-  const WIDE_SECTION_IDS = new Set(['next_focus']);
+  const WIDE_SECTION_IDS = new Set();
 
   // 桌面端「成对叠放」配置:两个 section 共享一个外层 grid cell,内部上下排
   // 只对桌面端生效,移动端 stack-pair 退化为单列
