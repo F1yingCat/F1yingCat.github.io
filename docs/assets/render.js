@@ -240,6 +240,72 @@
     return '<tr>' + row.map((c, i) => renderCell(c, i, columns)).join('') + '</tr>';
   }
 
+  /* 事件型 KPI 卡片(六段 明日/下周关注)
+     卡片 3 行:
+       第 1 行:★ 关注度(独占一行,重要性突出)
+       第 2 行:事件名称
+       第 3 行:时间
+     点击 → popover 显示完整"影响"内容
+     动态事件数量:grid auto-fill 自适应列数 */
+  function renderEventKpis(columns, rows) {
+    if (!rows || !rows.length) return '';
+    const colIdx = (name) => columns.findIndex(c => String((c && c.text) || c || '').indexOf(name) === 0);
+    const evIdx = colIdx('事件'), tmIdx = colIdx('时间'), imIdx = colIdx('影响'), fgIdx = colIdx('关注度');
+
+    // 关注度 → 星星 HTML(复用 renderCell 的映射规则)
+    function starsHtml(raw) {
+      const s = String(raw || '').trim();
+      // 纯星星
+      const m = s.match(/^(★+)$/);
+      if (m) {
+        const n = m[1].length;
+        const cls = n >= 5 ? 'stars-5' : n === 4 ? 'stars-4' : n === 3 ? 'stars-3' : 'stars-low';
+        const half = Math.ceil(n / 2);
+        const inner = n > 3
+          ? `<span class="star-line1">${m[1].slice(0, half)}</span><br class="star-break"><span class="star-line2">${m[1].slice(half)}</span>`
+          : m[1];
+        return `<span class="${cls}">${inner}</span>`;
+      }
+      // emoji 圆点标签 → 星星
+      const d = s.match(/^(🔴|🟠|🟡|🟢|⚪)\s*(最高|高|中|低)?\s*[·・:：]?\s*(.*)$/);
+      if (d) {
+        const map = { '🔴': [5, 'stars-5'], '🟠': [4, 'stars-4'], '🟡': [3, 'stars-3'],
+                      '🟢': [2, 'stars-low'], '⚪': [1, 'stars-low'] };
+        const [n, cls] = map[d[1]] || [3, 'stars-3'];
+        const stars = '★'.repeat(n);
+        const half = Math.ceil(n / 2);
+        const inner = n > 3
+          ? `<span class="star-line1">${stars.slice(0, half)}</span><br class="star-break"><span class="star-line2">${stars.slice(half)}</span>`
+          : stars;
+        const label = esc(d[3] || '').trim();
+        return `<span class="${cls}">${inner}</span>` + (label ? ` <span class="star-label">${label}</span>` : '');
+      }
+      return esc(s);
+    }
+
+    const cards = rows.map((r) => {
+      const event = String(r[evIdx] || '');
+      // 事件名去掉 emoji 前缀(🔴 等),只保留文字
+      const eventText = event.replace(/^(🔴|🟠|🟡|🟢|⚪)\s*/, '');
+      const time = esc(r[tmIdx] || '');
+      const impact = String(r[imIdx] || '').replace(/📡\s*/, '');
+      const focusHtml = starsHtml(r[fgIdx]);
+      const popIdx = summaryCounter++;
+      return `<div class="event-kpi kpi-pop" data-kpi-idx="${popIdx}" title="点击查看完整影响">
+        <div class="event-kpi-stars">${focusHtml}</div>
+        <div class="event-kpi-title">${esc(eventText)}</div>
+        <div class="event-kpi-time">${time}</div>
+      </div>
+      <div class="popover-body event-kpi-full" data-kpi-idx="${popIdx}" hidden>
+        <div class="event-kpi-stars event-kpi-stars-pop">${focusHtml}</div>
+        <div class="event-kpi-title event-kpi-title-pop">${esc(eventText)}</div>
+        <div class="event-kpi-time event-kpi-time-pop">${time}</div>
+        <div class="impact-text">${impact}</div>
+      </div>`;
+    }).join('');
+    return `<div class="event-kpi-grid">${cards}</div>`;
+  }
+
   function renderTable(columns, rows) {
     const thead = '<thead><tr>' +
       columns.map(c => {
@@ -609,8 +675,12 @@
       body = renderKpis(s.kpis);
     } else {
       // source 和 note 都折进 note 里(默认折叠),不在外面单独渲染
+      // 事件型表格(事件/时间/影响/关注度)→ 改用 KPI 卡片布局
+      const isEventTable = hasTable && s.columns && s.columns.length >= 4 &&
+        s.columns.some(c => String((c && c.text) || c || '').indexOf('关注度') === 0);
       const inner = (hasKpis ? renderKpis(s.kpis) : '') +
-        (hasTable ? renderTable(s.columns, s.rows) : '') +
+        (hasTable && !isEventTable ? renderTable(s.columns, s.rows) : '') +
+        (isEventTable ? renderEventKpis(s.columns, s.rows) : '') +
         (hasCharts ? s.charts.map(renderChart).join('') : '') +
         (s.legend ? `<div class="legend">${esc(s.legend)}</div>` : '') +
         renderNote(s.note, s.source);
