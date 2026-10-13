@@ -832,12 +832,12 @@
       "source": "整理自盘后新闻 + 数据 schedule",
       "columns": [
         {
-          "className": "wrap-tight",
+          "className": "wrap",
           "text": "事件"
         },
         "时间",
         {
-          "className": "wrap-tight",
+          "className": "wrap-wide",
           "text": "影响"
         },
         "关注度"

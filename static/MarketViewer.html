@@ -172,6 +172,13 @@
     vertical-align: top;
     padding: 7px 10px;
   }
+  /* 宽 wrap 列(超长文字如"影响"):更大 max-width,大幅减少行数 */
+  .table-wrap td.wrap-wide, .table-wrap th.wrap-wide{
+    white-space:normal; word-break:break-all;
+    max-width: 460px;
+    vertical-align: top;
+    padding: 7px 10px;
+  }
   /* section.text-left:整张表全部贴左(标题 + 内容) */
   section.text-left .table-wrap th,
   section.text-left .table-wrap td{ text-align:left; }
