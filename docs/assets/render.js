@@ -21,7 +21,7 @@
 
   const DESKTOP_MQ = window.matchMedia('(min-width: 768px)');
   // 所有 section 都是 1 col 卡片,宽度相等 — 不再有全宽 banner
-  const WIDE_SECTION_IDS = new Set();
+  const WIDE_SECTION_IDS = new Set(['next_focus']);
 
   // 桌面端「成对叠放」配置:两个 section 共享一个外层 grid cell,内部上下排
   // 只对桌面端生效,移动端 stack-pair 退化为单列
@@ -197,72 +197,32 @@
     const dir = c.dir ? esc(c.dir) : '';
     // ▲/▼ 符号跟 dir 一致:A 股金融习惯——红涨绿跌
     // 例 CNH 数值方向 ▲(汇率数字涨)+ dir=down(人民币贬):
-    //   我们重写为 ▼ 让符号跟"对人民币贬值"语义一致(显示绿+▼)
-    // 例 DXY 数据方向 ▲+ dir=up(美元强势):
-    //   保持 ▲(▲+红,美元涨)
+    //   重写为 ▼ 让符号跟"对人民币贬值"语义一致(显示绿+▼)
     let displayText = c.text || '';
     if (dir === 'up') {
       displayText = displayText.replace(/▼/g, '▲');
     } else if (dir === 'down') {
       displayText = displayText.replace(/▲/g, '▼');
     }
+
+    // 长文字 cell(> 25 字符,含描述文字):td 不整体染色,只染 ▲▼ 及紧跟的涨跌数值
+    // 避免"扩大 2.86 点 (贴水加深)...主力对节后转为谨慎"整段变红/绿
+    if (displayText.length > 25 && (dir === 'up' || dir === 'down')) {
+      const escText = esc(displayText);
+      // 匹配 ▲/▼ + 紧跟的 +/- 数字 + 可选 bp/点/%/亿/万 后缀
+      const colored = escText
+        .replace(/([▲▼])\s*([+-]?[\d,.]+)\s*(bp|点|%|亿|万)?/g,
+          (m, arrow, num, unit) => `<span class="${esc(dir)}">${arrow}${num}${unit || ''}</span>`);
+      const cls = finalCls.trim();
+      return cls ? `<td class="${esc(cls)}">${colored}</td>` : `<td>${colored}</td>`;
+    }
+
     const classes = [dir, finalCls.trim()].filter(Boolean).join(' ');
     return classes ? `<td class="${classes}">${esc(displayText)}</td>` : `<td>${esc(displayText || '')}</td>`;
   }
 
   function renderRow(row, columns) {
     return '<tr>' + row.map((c, i) => renderCell(c, i, columns)).join('') + '</tr>';
-  }
-
-  /* 事件型 KPI 卡片(列含 事件/时间/影响/关注度)— 表格改 KPI 布局
-     每张卡片 3 行:
-       第 1 行:关注度(★ 数量,按数量分色)
-       第 2 行:事件
-       第 3 行:时间
-     点击卡片 → popover 显示完整"影响"内容
-     动态事件数量:grid auto-fill 自动多列(桌面 4-8,移动 2-3) */
-  function renderEventKpis(columns, rows) {
-    if (!rows || !rows.length) return '';
-    // 找各列位置
-    const colIdx = (name) => columns.findIndex(c => (c.text || c) === name);
-    const evIdx = colIdx('事件'), tmIdx = colIdx('时间'), imIdx = colIdx('影响'), fgIdx = colIdx('关注度');
-    const cards = rows.map((r) => {
-      const event = esc(r[evIdx] || '');
-      const time = esc(r[tmIdx] || '');
-      const impact = r[imIdx] || '';  // 原始 html(可能含 <b>)
-      let focus = esc(r[fgIdx] || '');
-      // 关注度分色:5 红/4 橙/3 黄/<3 灰
-      const starMatch = (r[fgIdx] || '').match(/^(★+)$/);
-      let starCls = 'stars-low';
-      if (starMatch) {
-        const n = starMatch[1].length;
-        starCls = n >= 5 ? 'stars-5' : n === 4 ? 'stars-4' : n === 3 ? 'stars-3' : 'stars-low';
-        // ★ 数量 > 3 时拆 2 行:PC 端隐藏 br 单行,移动端 .star-break 强制换行
-        if (n > 3) {
-          const half = Math.ceil(n / 2);  // 5 → 3+2, 4 → 2+2
-          focus = `<span class="star-line1">${starMatch[1].slice(0, half)}</span><br class="star-break"><span class="star-line2">${starMatch[1].slice(half)}</span>`;
-        }
-      }
-      const popIdx = summaryCounter++;
-      // 事件卡(第 1-2 行)+ 时间(第 3 行)
-      // 关注度 + 事件同行展示(★ 在事件前面)+ 时间在下一行
-      return `<div class="event-kpi kpi-pop" data-kpi-idx="${popIdx}" title="点击查看完整影响">
-        <div class="event-kpi-head">
-          <span class="${starCls}">${focus}</span>
-          <span class="event-kpi-title">${event}</span>
-        </div>
-        <div class="event-kpi-time">${time}</div>
-      </div>
-      <div class="popover-body event-kpi-full" data-kpi-idx="${popIdx}" hidden>
-        <div class="kpi-pop-head">
-          <span class="${starCls}">${focus}</span>
-          <span class="lbl">${event}</span>
-        </div>
-        <div class="event-kpi-time event-kpi-time-pop">${time}</div>
-        <div class="impact-text">${impact.replace(/▲/g, '<span class="up">▲</span>').replace(/▼/g, '<span class="down">▼</span>')}</div>
-      </div>`;
-    }).join('');
-    return `<div class="event-kpi-grid">${cards}</div>`;
   }
 
   function renderTable(columns, rows) {
@@ -634,14 +594,8 @@
       body = renderKpis(s.kpis);
     } else {
       // source 和 note 都折进 note 里(默认折叠),不在外面单独渲染
-      // 检测是否"事件型表格"(列含 事件/时间/影响/关注度)— 改用 KPI 卡片布局
-    const isEventTable = hasTable && s.columns && s.columns.length === 4 &&
-      s.columns.some(c => (c.text || c) === '事件') &&
-      s.columns.some(c => (c.text || c) === '关注度');
-
-    const inner = (hasKpis ? renderKpis(s.kpis) : '') +
-        (hasTable && !isEventTable ? renderTable(s.columns, s.rows) : '') +
-        (isEventTable ? renderEventKpis(s.columns, s.rows) : '') +
+      const inner = (hasKpis ? renderKpis(s.kpis) : '') +
+        (hasTable ? renderTable(s.columns, s.rows) : '') +
         (hasCharts ? s.charts.map(renderChart).join('') : '') +
         (s.legend ? `<div class="legend">${esc(s.legend)}</div>` : '') +
         renderNote(s.note, s.source);
