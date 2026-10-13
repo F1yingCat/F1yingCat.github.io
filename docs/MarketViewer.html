@@ -238,6 +238,8 @@
 
   /* Note: popover 浮窗 — 点击按钮在**上方**弹出,点别处自动关闭 */
   .popover-note{ margin-top:auto; padding-top:8px; position:relative; z-index:99999; isolation:isolate; }
+  /* event-kpi-grid 后面跟 note 时,不加 margin-top:auto(否则撑出大片空白) */
+  section:has(> .event-kpi-grid) > .popover-note{ margin-top:10px; }
   .popover-trigger{
     width:100%; box-sizing:border-box;
     background:var(--accent-soft); border:1px solid transparent; border-radius:6px;
@@ -273,19 +275,20 @@
   /* 事件型 KPI 卡片(postmarket 六段 明日起/下周关注)— grid auto-fill 自适应事件数量 */
   .event-kpi-grid{
     display:grid;
-    grid-template-columns:repeat(auto-fill, minmax(240px, 1fr));
-    gap:10px;
+    /* minmax 150px:窄 section(1/3 宽 ~430px)也能放 2 列,高度可控 */
+    grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
+    gap:8px;
     margin-top:8px;
   }
   .event-kpi{
-    padding:12px 14px;
+    padding:10px 11px;
     background:var(--card-bg, #fff);
     border:1px solid var(--line);
     border-radius:8px;
     cursor:pointer;
     transition:all .15s ease;
     display:flex; flex-direction:column;
-    min-height:110px;
+    min-height:88px;
   }
   [data-theme="dark"] .event-kpi{ background:#0f1420; }
   .event-kpi:hover{
@@ -295,22 +298,22 @@
   }
   /* 第 1 行:★ 关注度(独占一行,重要性最突出) */
   .event-kpi-stars{
-    display:block; margin-bottom:7px; padding-bottom:7px;
+    display:block; margin-bottom:5px; padding-bottom:5px;
     border-bottom:1px dashed var(--line);
-    min-height:22px;
+    min-height:18px;
   }
-  .event-kpi-stars .star-label{ font-size:12px; color:var(--sub); }
+  .event-kpi-stars .star-label{ font-size:11.5px; color:var(--sub); }
   /* 第 2 行:事件名称 */
   .event-kpi-title{
-    font-size:13.5px; line-height:1.45; color:var(--ink); font-weight:600;
-    margin-bottom:6px;
+    font-size:12.5px; line-height:1.4; color:var(--ink); font-weight:600;
+    margin-bottom:4px;
     /* 多行换行,长事件名 3 行内显示 */
     display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;
     overflow:hidden;
   }
   /* 第 3 行:时间(推到底部对齐) */
   .event-kpi-time{
-    font-size:12px; color:var(--sub); font-variant-numeric:tabular-nums;
+    font-size:11.5px; color:var(--sub); font-variant-numeric:tabular-nums;
     margin-top:auto;
   }
   /* popover 内:星星 / 事件 / 时间 / 影响 */
