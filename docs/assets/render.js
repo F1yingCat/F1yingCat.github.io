@@ -153,22 +153,37 @@
         cellHtml = cellHtml.replace(/^([\u4e00-\u9fff·、]+) ([A-Za-z0-9(\s].*)$/, '$1<br>$2');
         cellHtml = cellHtml.replace(/\n/g, '<br>');
       }
-      // ★ 关注度字符统一染色 + 加大(避免字体重叠导致颜色不一致)
-// ★★★★★ → .stars-5 红,★★★★ → .stars-4 橙,★★★ → .stars-3 黄,★★/★ → .stars-low 灰
-// ★ 数量 > 3 时拆 2 行:PC 端隐藏 br 强制单行(避免破坏现有布局),移动端用 .star-break 让第二行换下来
+      // ★ 关注度:统一渲染为星星(纯 ★ 或 emoji 圆点标签都转成星星)
+      // ★★★★★ → 5 星红,★★★★ → 4 星橙,★★★ → 3 星黄,★★ → 灰
+      // emoji 圆点标签 '🔴 最高 · xxx' / '🟡 中 · xxx' → 转成 N 星 + 等级文字
+      let content = cellHtml;
+      let cls = '';
       const starMatch = cellHtml.match(/^(★+)$/);
       if (starMatch) {
         const n = starMatch[1].length;
-        const cls = n >= 5 ? 'stars-5' : n === 4 ? 'stars-4' : n === 3 ? 'stars-3' : 'stars-low';
-        let content = cellHtml;
+        cls = n >= 5 ? 'stars-5' : n === 4 ? 'stars-4' : n === 3 ? 'stars-3' : 'stars-low';
         if (n > 3) {
+          // >3 颗拆 2 行:PC 单行(隐藏 br),移动端 .star-break 强制换行
           const half = Math.ceil(n / 2);  // 5 → 3+2, 4 → 2+2
-          // 用 <br class="star-break"> 而非普通 <br>,CSS 控制显示
-          // PC 端 .star-break { display: none } — 不换行(单行)
-          // 移动端 @media (max-width: 599px) .star-break { display: block } — 强制换行
           content = `<span class="star-line1">${cellHtml.slice(0, half)}</span><br class="star-break"><span class="star-line2">${cellHtml.slice(half)}</span>`;
         }
-        cellHtml = `<span class="${cls}">${content}</span>`;
+      } else {
+        // emoji 圆点标签 → 星星:🔴最高=5星,🟠高=4星,🟡中=3星,🟢低=2星
+        const dot = cellHtml.match(/^(🔴|🟠|🟡|🟢|⚪)\s*(最高|高|中|低)?\s*[·・:：]?\s*(.*)$/);
+        if (dot) {
+          const map = { '🔴': [5, 'stars-5'], '🟠': [4, 'stars-4'], '🟡': [3, 'stars-3'], '🟢': [2, 'stars-low'], '⚪': [1, 'stars-low'] };
+          const [n, starCls] = map[dot[1]] || [3, 'stars-3'];
+          const stars = '★'.repeat(n);
+          const label = esc(dot[3] || '').trim();
+          cls = starCls;
+          const starHtml = n > 3
+            ? `<span class="star-line1">${stars.slice(0, Math.ceil(n / 2))}</span><br class="star-break"><span class="star-line2">${stars.slice(Math.ceil(n / 2))}</span>`
+            : stars;
+          content = `<span class="${starCls}">${starHtml}</span>` + (label ? ` <span class="star-label">${label}</span>` : '');
+        }
+      }
+      if (cls) {
+        cellHtml = content;
       }
       return colCls ? `<td class="${esc(colCls)}">${cellHtml}</td>` : `<td>${cellHtml}</td>`;
     }
