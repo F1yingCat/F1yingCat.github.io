@@ -530,8 +530,40 @@
           }]
         };
       } else if (chart.type === 'bar') {
+        // colorByChg:按环比自动染色(放量红 / 缩量绿 / 首根中性蓝)
+        // A 股习惯:红涨绿跌 — 成交额放大(利多)= 红,萎缩(利空)= 绿
+        let barData = data;
+        if (chart.colorByChg) {
+          const UP = '#cc3333', DOWN = '#1e9e5a', FLAT = '#2f5fd0';
+          const vals = data.map(d => (typeof d === 'object' ? d.value : d));
+          barData = data.map((d, i) => {
+            const v = typeof d === 'object' ? d.value : d;
+            const base = typeof d === 'object' ? d : { value: d };
+            let color = FLAT;
+            if (i > 0 && vals[i - 1]) {
+              const pct = (v / vals[i - 1] - 1) * 100;
+              color = pct > 0.05 ? UP : (pct < -0.05 ? DOWN : FLAT);
+            }
+            return { ...base, itemStyle: { color } };
+          });
+        }
         option = {
-          tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: chart.tooltipFormat || '{b}: {c}' },
+          tooltip: {
+            trigger: 'axis', axisPointer: { type: 'shadow' },
+            formatter: (params) => {
+              if (!params || !params.length) return '';
+              const p = params[0];
+              const i = p.dataIndex;
+              const cats = chart.categories || [];
+              const vals = data.map(d => (typeof d === 'object' ? d.value : d));
+              let extra = '';
+              if (chart.colorByChg && i > 0 && vals[i - 1]) {
+                const pct = (vals[i] / vals[i - 1] - 1) * 100;
+                extra = `<br/>较前一日 ${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
+              }
+              return `${cats[i] || p.name}<br/>${p.value} 亿元${extra}`;
+            }
+          },
           grid: { left: 48, right: 24, top: chart.markLine ? 40 : 14, bottom: 22 },
           xAxis: { type: 'category', data: chart.categories || [] },
           yAxis: {
@@ -541,7 +573,7 @@
             min: chart.yMin
           },
           series: [{
-            type: 'bar', barWidth: '46%', data,
+            type: 'bar', barWidth: '46%', data: barData,
             markLine: markLineData.length ? { silent: true, symbol: 'none', data: markLineData } : undefined
           }]
         };
