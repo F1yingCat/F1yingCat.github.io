@@ -362,14 +362,45 @@
   // 让 Mavis 即使生成超长数据也不会撑坏页面
   const MAX_TAGS = 8;
   const MAX_TAG_LEN = 80;
+  /* 按「可见字符数」截断:<b>/</b> 标签本身不占字数,
+   * 且不切断在标签中间(否则会留下半个 "<b" 这种脏字符)。
+   * 切出来的残缺 <b> 交给 escKeepBold 丢弃(落单开标签直接丢),不会改 DOM 结构。 */
+  function sliceTagPlain(raw, maxLen) {
+    var visible = 0, i = 0, out = '', depth = 0;
+    while (i < raw.length) {
+      var c = raw.charAt(i);
+      if (c === '<') {
+        var j = raw.indexOf('>', i);
+        if (j < 0) break;              // 残缺标签,丢弃
+        var tag = raw.slice(i, j + 1);
+        var low = tag.toLowerCase();
+        if (low === '<b>') depth++;
+        else if (low === '</b>') depth = Math.max(0, depth - 1);
+        out += tag;
+        i = j + 1;
+        continue;
+      }
+      if (visible >= maxLen) break;
+      out += c;
+      visible++;
+      i++;
+    }
+    if (visible >= maxLen && i < raw.length) out += '…';
+    // 截断时把仍开着的 <b> 补齐:否则 escKeepBold 会因为「找不到配对的 </b>」
+    // 把这个开标签整个丢掉,截出来的那段就一点也不加粗了(实测 tag[0] 整条失去强调)。
+    while (depth > 0) { out += '</b>'; depth--; }
+    return out;
+  }
   function renderTagsRow(tags) {
     if (!tags || !tags.length) return '';
     const limited = tags.slice(0, MAX_TAGS);
     return '<div class="tags-row">' + limited.map((t, i) => {
-      const tagText = t.length > MAX_TAG_LEN ? t.slice(0, MAX_TAG_LEN) + '…' : t;
+      const tagText = sliceTagPlain(t, MAX_TAG_LEN);
       const fullText = t;  // popover 仍显示完整原文
-      return `<span class="tag tag-pop" data-tag-idx="${i}">${esc(tagText)}</span>` +
-        `<div class="popover-body tag-popover" data-tag-idx="${i}" hidden>${esc(fullText)}</div>`;
+      // 数据里的 tag 带 <b>(强调关键数字),必须走 escKeepBold;
+      // 用 esc 会把 <b> 转义成字面量,页面上就会露出 "<b>" 而不是加粗。
+      return `<span class="tag tag-pop" data-tag-idx="${i}">${escKeepBold(tagText)}</span>` +
+        `<div class="popover-body tag-popover" data-tag-idx="${i}" hidden>${escKeepBold(fullText)}</div>`;
     }).join('') + '</div>';
   }
 
@@ -414,14 +445,16 @@
   }
 
   function renderSource(parts) {
-    if (typeof parts === 'string') return `<div class="src">${esc(parts)}</div>`;
+    // source 里的 <b> 同样是数据作者写的强调标记,走 escKeepBold,
+    // 否则弹窗里会露出一堆字面 "<b>"(与 note 的处理保持一致)
+    if (typeof parts === 'string') return `<div class="src">${escKeepBold(parts)}</div>`;
     if (!Array.isArray(parts)) return '';
     const html = parts.map(p => {
       if (p.fallback) {
-        return `<span class="srcfallback">${esc(p.text || '📡')}</span>`;
+        return `<span class="srcfallback">${escKeepBold(p.text || '📡')}</span>`;
       }
       if (p.html) return p.html;
-      return esc(p.text || '');
+      return escKeepBold(p.text || '');
     }).join('');
     return `<div class="src">${html}</div>`;
   }
