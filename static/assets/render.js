@@ -42,6 +42,16 @@
       .replace(/"/g, '&quot;');
   }
 
+  /* ========== 工具：富文本(允许加粗，别的一律转义) ==========
+   * 数据是人/脚本写的，加粗有两种写法：<b>…</b> 和 **…**。
+   * 以前只有 summary / tags / chg / note 走 escKeepBold，其余字段都走 esc，
+   * 于是这些字段里出现的 <b> 会在页面上原样露出来（表格、KPI 标签、段落标题
+   * 都中过）。现在统一走 rich()：先把 **…** 归一成 <b>，再交给 escKeepBold
+   * 转义并只放行配对好的 <b>。 */
+  function rich(s) {
+    return escKeepBold(String(s == null ? '' : s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'));
+  }
+
   /* ========== 工具：转义但保留成对的 <b> ==========
    * 数据里的 chg / summary / note 允许带 <b>，所以以前是「先 esc、再把
    * &lt;b&gt; 换回 <b>」。问题在于数据是每天自动生成的，标签偶尔不配平。
@@ -58,12 +68,17 @@
    * 嵌套 <b><b>x</b></b> 仍然照常输出，深度逻辑不变。 */
   function escKeepBold(s) {
     var e = esc(s);
+    /* 放行两种"写法上无害"的标签:
+       <b>  —— 加粗,必须成对(下面按 budget 配对)
+       <br> —— 换行,note/summary 里分段常用,以前它会以 "&lt;br&gt;"
+               原样印在页面上(2026-11 的真实数据里有 7 处) */
+    e = e.replace(/&lt;br\s*\/?&gt;/gi, '\n');
     var OPEN = '&lt;b&gt;';
     var CLOSE = '&lt;/b&gt;';
     // 闭合标签的总数 = 能配上的开标签上限
     var budget = e.split(CLOSE).length - 1;
     var depth = 0;
-    return e.replace(/&lt;\/?b&gt;/g, function (tag) {
+    var out = e.replace(/&lt;\/?b&gt;/g, function (tag) {
       if (tag === OPEN) {
         if (budget <= 0) return '';   // 没有闭合标签与之配对，丢弃
         budget--;
@@ -73,6 +88,7 @@
       if (depth > 0) { depth--; return '</b>'; }
       return '';                        // 落单的闭合标签，丢弃
     });
+    return out.replace(/\n/g, '<br>');
   }
 
   /* ========== 设备检测 ========== */
@@ -94,8 +110,12 @@
       const next = get() === 'dark' ? 'light' : 'dark';
       localStorage.setItem(KEY, next);
       apply(next);
-      // 触发 ECharts resize（主题切换可能影响容器尺寸）
-      requestAnimationFrame(resizeAllCharts);
+      /* 图表颜色是初始化时按主题算的,只 resize 不会换色。
+         用上一次的数据重渲染一遍,图表才会跟着换 (见 rerenderNow)。 */
+      requestAnimationFrame(() => {
+        if (typeof rerenderNow === 'function') rerenderNow();
+        else resizeAllCharts();
+      });
     }
     function init() {
       apply(get());
@@ -148,7 +168,7 @@
       // 纯字符串:td 加 colCls(让列 className 自动应用)
       // split(智能换行,仅 wrap split 列):在"中文名 + 英文/数字"边界自动拆
       // 例 "美元指数 DXY (9/9 收盘)" → "美元指数<br>DXY (9/9 收盘)"
-      let cellHtml = esc(c);
+      let cellHtml = rich(c);
       if (colCls && colCls.indexOf('split') !== -1) {
         cellHtml = cellHtml.replace(/^([\u4e00-\u9fff·、]+) ([A-Za-z0-9(\s].*)$/, '$1<br>$2');
         cellHtml = cellHtml.replace(/\n/g, '<br>');
@@ -174,7 +194,7 @@
           const map = { '🔴': [5, 'stars-5'], '🟠': [4, 'stars-4'], '🟡': [3, 'stars-3'], '🟢': [2, 'stars-low'], '⚪': [1, 'stars-low'] };
           const [n, starCls] = map[dot[1]] || [3, 'stars-3'];
           const stars = '★'.repeat(n);
-          const label = esc(dot[3] || '').trim();
+          const label = (dot[3] || '').trim();   /* cellHtml 已转义过,不要再 esc */
           cls = starCls;
           const starHtml = n > 3
             ? `<span class="star-line1">${stars.slice(0, Math.ceil(n / 2))}</span><br class="star-break"><span class="star-line2">${stars.slice(Math.ceil(n / 2))}</span>`
@@ -195,16 +215,16 @@
     if (c.type === 'code') {
       const codeCls = c.className || 'col-code';
       const merged = colCls ? `${esc(codeCls)} ${esc(colCls)}` : esc(codeCls);
-      return `<td class="code ${merged}">${esc(c.text)}</td>`;
+      return `<td class="code ${merged}">${rich(c.text)}</td>`;
     }
     if (c.type === 'pill') {
-      return `<td${colCls ? ' class="'+esc(colCls)+'"' : ''}><span class="pill ${esc(c.level || 'near')}">${esc(c.text)}</span></td>`;
+      return `<td${colCls ? ' class="'+esc(colCls)+'"' : ''}><span class="pill ${esc(c.level || 'near')}">${rich(c.text)}</span></td>`;
     }
     if (c.type === 'source' || (c.fallback !== undefined && c.text === undefined)) {
       if (c.fallback) {
-        return `<td${colCls ? ' class="'+esc(colCls)+'"' : ''}><span class="srcfallback">${esc(c.text || '📡')}</span></td>`;
+        return `<td${colCls ? ' class="'+esc(colCls)+'"' : ''}><span class="srcfallback">${rich(c.text || '📡')}</span></td>`;
       }
-      return `<td${colCls ? ' class="'+esc(colCls)+'"' : ''}><span class="source-ok">${esc(c.text || '聚源')}</span></td>`;
+      return `<td${colCls ? ' class="'+esc(colCls)+'"' : ''}><span class="source-ok">${rich(c.text || '聚源')}</span></td>`;
     }
     if (c.type === 'html') {
       return `<td${colCls ? ' class="'+esc(colCls)+'"' : ''}>${c.html || ''}</td>`;
@@ -223,7 +243,7 @@
     // 长文字 cell(> 25 字符,含描述文字):td 不整体染色,只染 ▲▼ 及紧跟的涨跌数值
     // 避免"扩大 2.86 点 (贴水加深)...主力对节后转为谨慎"整段变红/绿
     if (displayText.length > 25 && (dir === 'up' || dir === 'down')) {
-      const escText = esc(displayText);
+      const escText = rich(displayText);
       // 匹配 ▲/▼ + 紧跟的 +/- 数字 + 可选 bp/点/%/亿/万 后缀
       const colored = escText
         .replace(/([▲▼])\s*([+-]?[\d,.]+)\s*(bp|点|%|亿|万)?/g,
@@ -233,7 +253,7 @@
     }
 
     const classes = [dir, finalCls.trim()].filter(Boolean).join(' ');
-    return classes ? `<td class="${classes}">${esc(displayText)}</td>` : `<td>${esc(displayText || '')}</td>`;
+    return classes ? `<td class="${classes}">${rich(displayText)}</td>` : `<td>${rich(displayText || '')}</td>`;
   }
 
   function renderRow(row, columns) {
@@ -255,16 +275,21 @@
     // 关注度 → 星星 HTML(复用 renderCell 的映射规则)
     function starsHtml(raw) {
       const s = String(raw || '').trim();
-      // 纯星星
-      const m = s.match(/^(★+)$/);
+      /* "★★★★☆" 这种写法:实心星数 = 评级,空心星是"差一格"。
+         按实心数上色,空心星单独用 line 色,读起来是 5 分制的 4 分 */
+      const m = s.match(/^([★☆]+)$/);
       if (m) {
-        const n = m[1].length;
+        const filled = (m[1].match(/★/g) || []).length;
+        const hollow = (m[1].match(/☆/g) || []).length;
+        const n = filled;
         const cls = n >= 5 ? 'stars-5' : n === 4 ? 'stars-4' : n === 3 ? 'stars-3' : 'stars-low';
+        const solid = '★'.repeat(n);
         const half = Math.ceil(n / 2);
         const inner = n > 3
-          ? `<span class="star-line1">${m[1].slice(0, half)}</span><br class="star-break"><span class="star-line2">${m[1].slice(half)}</span>`
-          : m[1];
-        return `<span class="${cls}">${inner}</span>`;
+          ? `<span class="star-line1">${solid.slice(0, half)}</span><br class="star-break"><span class="star-line2">${solid.slice(half)}</span>`
+          : solid;
+        return `<span class="${cls}">${inner}</span>` +
+          (hollow ? `<span class="stars-o">${'☆'.repeat(hollow)}</span>` : '');
       }
       // emoji 圆点标签 → 星星
       const d = s.match(/^(🔴|🟠|🟡|🟢|⚪)\s*(最高|高|中|低)?\s*[·・:：]?\s*(.*)$/);
@@ -280,25 +305,38 @@
         const label = esc(d[3] || '').trim();
         return `<span class="${cls}">${inner}</span>` + (label ? ` <span class="star-label">${label}</span>` : '');
       }
-      return esc(s);
+      return rich(s);
     }
 
     const cards = rows.map((r) => {
-      const event = String(r[evIdx] || '');
-      // 事件名去掉 emoji 前缀(🔴 等),只保留文字
-      const eventText = event.replace(/^(🔴|🟠|🟡|🟢|⚪)\s*/, '');
-      const time = esc(r[tmIdx] || '');
-      const impact = String(r[imIdx] || '').replace(/📡\s*/, '');
-      const focusHtml = starsHtml(r[fgIdx]);
+      /* "关注度" 这一列长这样: "★★★★★ · 11/4 主力净额 + ETF 净流入持续性"
+         —— 星星和标题写在同一个格子里。这里把它拆开:星星进独立的评级行,
+         剩下的才是标题。拆不出来(纯文字关注度)就整串当标题。 */
+      const focusRaw = String(r[fgIdx] || '').trim();
+      const fm = focusRaw.match(/^([★☆]+)\s*[·・:：]?\s*(.*)$/);
+      const starsText = fm ? fm[1] : '';
+      const headline = (fm ? fm[2] : focusRaw) || '';
+      /* "事件" 列以 ★★★★★ / ** 开头,那些是排版标记不是正文,去掉;
+         卡片第 3 行放这段正文,完整版仍在 popover 里 */
+      const bodyText = String(r[evIdx] || '')
+        .replace(/^(🔴|🟠|🟡|🟢|⚪)\s*/, '')
+        .replace(/^[★☆]+\s*/, '')
+        .replace(/\*\*/g, '')
+        .trim();
+      const time = rich(r[tmIdx] || '');
+      const impact = String(r[imIdx] || '').replace(/📡\s*/, '').replace(/\*\*/g, '');
+      const starsEl = starsText ? starsHtml(starsText) : '';
       const popIdx = summaryCounter++;
-      return `<div class="event-kpi kpi-pop" data-kpi-idx="${popIdx}" title="点击查看完整影响">
-        <div class="event-kpi-stars">${focusHtml}</div>
-        <div class="event-kpi-title">${esc(eventText)}</div>
+      return `<div class="event-kpi kpi-pop" data-kpi-idx="${popIdx}" role="button" tabindex="0" title="点击查看完整内容">
+        <div class="event-kpi-stars">${starsEl}</div>
+        <div class="event-kpi-title">${rich(headline)}</div>
+        <div class="event-kpi-body">${rich(bodyText)}</div>
         <div class="event-kpi-time">${time}</div>
       </div>
       <div class="popover-body event-kpi-full" data-kpi-idx="${popIdx}" hidden>
-        <div class="event-kpi-stars event-kpi-stars-pop">${focusHtml}</div>
-        <div class="event-kpi-title event-kpi-title-pop">${esc(eventText)}</div>
+        <div class="event-kpi-stars event-kpi-stars-pop">${starsEl}</div>
+        <div class="event-kpi-title event-kpi-title-pop">${rich(headline)}</div>
+        <div class="event-kpi-body event-kpi-body-pop">${rich(bodyText)}</div>
         <div class="event-kpi-time event-kpi-time-pop">${time}</div>
         <div class="impact-text">${impact}</div>
       </div>`;
@@ -311,10 +349,14 @@
       columns.map(c => {
         // 表头不继承任何 class(包括 wrap / split)— 保持默认 nowrap + 标准 padding
         const text = (typeof c === 'object') ? c.text : c;
-        return `<th>${esc(text)}</th>`;
+        return `<th>${rich(text)}</th>`;
       }).join('') +
       '</tr></thead>';
-    const tbody = '<tbody>' + rows.map(r => renderRow(r, columns)).join('') + '</tbody>';
+    /* rows 为空时只渲染表头,下面是几百像素的空白 —— 看起来像页面坏了。
+       补一行占位,把"这里本来有表、现在没数据"说清楚 */
+    const tbody = '<tbody>' + (rows.length
+      ? rows.map(r => renderRow(r, columns)).join('')
+      : `<tr><td class="empty-row" colspan="${columns.length}">暂无数据</td></tr>`) + '</tbody>';
     // 包一层 .table-wrap,移动端列多时横向滚动
     return `<div class="table-wrap"><table>${thead}${tbody}</table></div>`;
   }
@@ -340,15 +382,15 @@
         const chgHtml = escKeepBold(chgDisplay);
         // 每个 KPI 卡片可点击,弹 popover 显示完整 chg + label + value
         const popIdx = summaryCounter++;
-        return `<div class="kpi kpi-pop" data-kpi-idx="${popIdx}" title="点击查看完整内容">
-          <div class="lbl">${esc(k.label)}</div>
-          <div class="val">${esc(k.value)}</div>
+        return `<div class="kpi kpi-pop" data-kpi-idx="${popIdx}" role="button" tabindex="0" title="点击查看完整内容">
+          <div class="lbl">${rich(k.label)}</div>
+          <div class="val">${rich(k.value)}</div>
           <div class="chg${dir}">${chgHtml}</div>
         </div>
         <div class="popover-body kpi-full" data-kpi-idx="${popIdx}" hidden>
           <div class="kpi-pop-head">
-            <span class="lbl">${esc(k.label)}</span>
-            <span class="val">${esc(k.value)}</span>
+            <span class="lbl">${rich(k.label)}</span>
+            <span class="val">${rich(k.value)}</span>
           </div>
           <div class="chg-pop">${chgHtml.replace(/▲/g, '<span class="up">▲</span>').replace(/▼/g, '<span class="down">▼</span>')}</div>
         </div>`;
@@ -399,7 +441,10 @@
       const fullText = t;  // popover 仍显示完整原文
       // 数据里的 tag 带 <b>(强调关键数字),必须走 escKeepBold;
       // 用 esc 会把 <b> 转义成字面量,页面上就会露出 "<b>" 而不是加粗。
-      return `<span class="tag tag-pop" data-tag-idx="${i}">${escKeepBold(tagText)}</span>` +
+      // 被截过的标签加 tag--long:只有它们限宽,普通标签保持自然宽度
+      const plainLen = String(t).replace(/<\/?b>/g, '').length;
+      const longCls = plainLen > MAX_TAG_LEN ? ' tag--long' : '';
+      return `<span class="tag tag-pop${longCls}" data-tag-idx="${i}" title="${esc(fullText)}">${escKeepBold(tagText)}</span>` +
         `<div class="popover-body tag-popover" data-tag-idx="${i}" hidden>${escKeepBold(fullText)}</div>`;
     }).join('') + '</div>';
   }
@@ -420,7 +465,7 @@
       const end = cutAt > 100 ? cutAt + 1 : MAX_SUMMARY;
       summaryDisplay = summaryPlain.slice(0, end) + '…';
     }
-    const summaryHtml = escKeepBold(summaryDisplay);
+    const summaryHtml = rich(summaryDisplay);
     // 全文 html(用于 popover)— esc 后保留配平的 <b> 标签
     const summaryFullHtml = escKeepBold(summaryRaw);
     // 按钮 + popover 放在 header 末尾(独立位置,移动端始终在 summary 下方的底部)
@@ -434,14 +479,14 @@
         <div class="popover-body summary-full" data-summary-idx="${expandIdx}" hidden>${summaryFullHtml}</div>`
       : '';
     return renderTagsRow(h.tags) +
-      `<h1>${esc(h.title || '')}</h1>
+      `<h1>${rich(h.title || '')}</h1>
       <p class="header-summary">${summaryHtml}</p>
       ${expandBtn}`;
   }
 
   function renderFooter(f) {
     if (!f) return '';
-    return esc(f.text || '');
+    return rich(f.text || '');
   }
 
   function renderSource(parts) {
@@ -477,6 +522,32 @@
     </div>`;
   }
 
+  /* ========== 主题相关的取值 ========== */
+  /* 图表要判断"现在是不是深色底":暗色主题,或者终端皮肤(它本身就是黑底) */
+  function isDarkSurface() {
+    const de = document.documentElement;
+    if (de.getAttribute('data-skin') === 'terminal') return true;
+    return de.getAttribute('data-theme') === 'dark';
+  }
+  function cssVar(name, fallback) {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  }
+  /* 图表配置里有几处写死的浅色文字(#1f2937 / #6b7280)。
+     深色底上这些字等于看不见,所以 setOption 之前按主题替换掉。 */
+  function recolorOption(node, dark) {
+    const map = dark
+      ? { '#1f2937': '#e9ecf1', '#6b7280': '#9aa3b2' }
+      : { '#1f2937': cssVar('--ink', '#1b1914'), '#6b7280': cssVar('--sub', '#5d5748') };
+    const walk = (n) => {
+      if (Array.isArray(n)) { for (let i = 0; i < n.length; i++) n[i] = walk(n[i]); return n; }
+      if (n && typeof n === 'object') { for (const k in n) n[k] = walk(n[k]); return n; }
+      if (typeof n === 'string' && map[n]) return map[n];
+      return n;
+    };
+    return walk(node);
+  }
+
   /* ========== ECharts 渲染 ==========
    * chart: {
    *   id, type:"bar-h"|"bar"|"bar-single"|"line",
@@ -485,7 +556,7 @@
    */
   function renderChart(chart) {
     if (!chart || !chart.id) return '';
-    const titleHtml = chart.title ? `<div class="chart-title">${esc(chart.title)}</div>` : '';
+    const titleHtml = chart.title ? `<div class="chart-title">${rich(chart.title)}</div>` : '';
     // line chart 加 chart-line class,统一高度(不受 --chart-h 断点影响)
     const isLine = chart.type === 'line';
     const chartCls = `chart${isLine ? ' chart-line' : ''}`;
@@ -495,9 +566,15 @@
     setTimeout(() => {
       const dom = document.getElementById(`chart-${chart.id}`);
       if (!dom || !window.echarts) return;
-      const inst = echarts.init(dom);
+      const dark = isDarkSurface();
+      /* dark:true 时用 ECharts 内置 dark 主题(轴、网格、tooltip 都是深色皮肤);
+         背景压成透明,让图表落在卡片上而不是自己画一块底色 */
+      const inst = echarts.init(dom, dark ? 'dark' : null);
       // 全局字号 +1(让轴标签/legend/tooltip 更清晰)
-      inst.setOption({ textStyle: { fontSize: 13 } });
+      inst.setOption({
+        backgroundColor: 'transparent',
+        textStyle: { fontSize: 13, color: cssVar('--chart-ink', dark ? '#ebe4d6' : '#1b1914') }
+      });
       registerChart(inst);
 
       const data = (chart.data || []).map(d => ({
@@ -518,13 +595,17 @@
       }));
 
       let option;
-      const axisFmt = chart.axisFormat || '{value}';
+      /* 默认格式化:Number(2.8930000000000002).toFixed(2) → 2.89。
+         以前是 '{value}' 原样输出,轴上限一旦算成浮点噪声就直接印在轴上 */
+      const axisFmt = chart.axisFormat || ((v) => Number(Number(v).toFixed(2)));
       if (chart.type === 'bar-h') {
         // bar-h: bar 按数据方向自动延伸(0 在数据范围中央/边缘)
         //   负值 bar 从 0 向左,正值 bar 从 0 向右
         //   数据全负时 0 紧贴 yAxis(图右);数据混合时 0 居中;数据全正时 0 紧贴图最左
         const rawValues = data.map(d => (typeof d === 'object' ? d.value : d));
-        const absMax = Math.max(...rawValues.map(Math.abs)) * 1.1 || 1;
+        const rawAbs = Math.max(...rawValues.map(Math.abs)) || 1;
+        /* 向上取到 1 位小数:2.63×1.1=2.893 → 2.9,轴刻度落在干净的数上 */
+        const absMax = Math.ceil(rawAbs * 1.1 * 10) / 10;
         const hasPositive = rawValues.some(v => v > 0);
         const xMin = -absMax;
         const xMax = absMax;
@@ -545,7 +626,17 @@
               return `${fullName}<br/>${p.value}%`;
             }
           },
-          grid: { left: 60, right: 16, top: 14, bottom: 20 },
+          /* 左边距按最长的类目名算:固定 60px 时「费城半导体」「SK海力士」
+             会被裁成「城半导体」「海力士」(以前三栏时也有,只是没人细看) */
+          grid: {
+            left: Math.min(128, Math.max(56, 18 + Math.max(0, ...shortCats.map(c => c.length)) * 13)),
+            /* 右侧必须给"柱子外面的百分比标签"留位置。写死 16px 时
+               「▲2.63%」会被画布边缘切掉半个 —— 标签不是被 grid 裁的,
+               是被 canvas 裁的,所以只能从 grid 的留白里让出来。 */
+            right: chart.showLabel === false ? 16
+              : 10 + Math.max(4, ...data.map(v => String(Math.abs(typeof v === 'object' ? v.value : v)).length)) * 6,
+            top: 14, bottom: 20
+          },
           xAxis: { type: 'value', min: xMin, max: xMax, axisLabel: { formatter: axisFmt } },
           yAxis: { type: 'category', data: shortCats, inverse: true },
           series: [{
@@ -703,7 +794,7 @@
       } else {
         option = {};
       }
-      inst.setOption(option);
+      inst.setOption(recolorOption(option, dark));
     }, 0);
     return titleHtml + el.outerHTML;
   }
@@ -724,10 +815,16 @@
     const isWideById = s.id && WIDE_SECTION_IDS.has(s.id);
     // 桌面端左右并排：必须同时有 table 和 chart，且没有 kpis
     const useSideLayout = !isKpi && hasTable && hasCharts && !hasKpis;
+    // 事件表(事件/时间/影响/关注度)→ 渲染成卡片而不是表格
+    const isEventTable = hasTable && s.columns && s.columns.length >= 4 &&
+      s.columns.some(c => String((c && c.text) || c || '').indexOf('关注度') === 0);
 
     const classes = [];
     if (isKpi) classes.push('kpi-strip');
     if (useSideLayout) classes.push('has-chart');
+    // 事件卡段:卡片里是长标题 + 长正文,塞进 1 列只能显示三行省略号。
+    // 给它一个自己的类,CSS 让它横跨 2 列并把卡片放宽。
+    if (isEventTable) classes.push('event-sec');
     // KPI 段(type:kpi)横着占满全宽 — 每个页面的"一"都是关键指标 banner
     if (isKpi || isWideById) classes.push('span-2');
     // 6 段(明日起 / 下周关注)整表贴左:事件+时间+影响+重要度 都左对齐
@@ -737,24 +834,21 @@
 
     let body;
     if (isKpi) {
-      body = renderKpis(s.kpis);
+      body = hasKpis ? renderKpis(s.kpis) : '<div class="empty-row">暂无数据</div>';
     } else {
       // source 和 note 都折进 note 里(默认折叠),不在外面单独渲染
-      // 事件型表格(事件/时间/影响/关注度)→ 改用 KPI 卡片布局
-      const isEventTable = hasTable && s.columns && s.columns.length >= 4 &&
-        s.columns.some(c => String((c && c.text) || c || '').indexOf('关注度') === 0);
       const inner = (hasKpis ? renderKpis(s.kpis) : '') +
         (hasTable && !isEventTable ? renderTable(s.columns, s.rows) : '') +
         (isEventTable ? renderEventKpis(s.columns, s.rows) : '') +
         (hasCharts ? s.charts.map(renderChart).join('') : '') +
-        (s.legend ? `<div class="legend">${esc(s.legend)}</div>` : '') +
+        (s.legend ? `<div class="legend">${rich(s.legend)}</div>` : '') +
         renderNote(s.note, s.source);
       // 桌面端：有 table + chart 的 section 把 inner 装到 .body 里，CSS 做左右并排
       body = useSideLayout ? `<div class="body">${inner}</div>` : inner;
     }
 
     return `<section${clsAttr} id="sec-${esc(s.id || '')}">
-      <h2><span class="bar"></span>${esc(s.title || '')}</h2>
+      <h2><span class="bar"></span><span class="h2-text">${rich(s.title || '')}</span></h2>
       ${renderTagsRow(s.tags)}
       ${body}
     </section>`;
@@ -790,6 +884,58 @@
     return loadPage(page);
   }
 
+  /* ========== 顶栏时钟 ==========
+     只在桌面顶栏里(窄屏顶栏整条 display:none)。
+     每秒刷一次;切到后台时浏览器会把 interval 节流到分钟级甚至整个冻结,
+     所以 visibilitychange 回来必须立刻补一次 —— 否则会顶着几分钟前的旧时间。
+     role=timer 的隐式 aria-live 是 off,读屏器不会每秒念一遍。 */
+  const Clock = (function () {
+    const WD = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    const pad = (n) => String(n).padStart(2, '0');
+    let node = null;
+    let timer = 0;
+
+    function paint() {
+      if (!node) return;
+      const d = new Date();
+      const dateEl = node.querySelector('.top-clock-date');
+      const hmEl = node.querySelector('.top-clock-hm');
+      const secEl = node.querySelector('.top-clock-sec');
+      if (dateEl) dateEl.textContent =
+        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${WD[d.getDay()]}`;
+      if (hmEl) hmEl.textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      if (secEl) secEl.textContent = `:${pad(d.getSeconds())}`;
+    }
+
+    /* 挂到顶栏按钮组后面。不是 append 到 innerHTML 字符串里 —— 那样每次
+       重渲染都会重建节点,秒数会闪一下。 */
+    function mount(parent) {
+      if (!node) {
+        node = document.createElement('span');
+        node.className = 'top-clock';
+        node.id = 'top-clock';
+        node.setAttribute('role', 'timer');
+        node.setAttribute('aria-label', '本机当前时间');
+        node.title = '本机当前时间';
+        // 时分和秒拆成两个 span:秒是页面上唯一一直在变的东西,
+        // 用更淡的颜色把它压下去,眼睛看到的是稳定的「18:21」加一个安静的秒针
+        node.innerHTML = '<span class="top-clock-date"></span>' +
+          '<span class="top-clock-hm"></span><span class="top-clock-sec"></span>';
+        paint();
+      }
+      if (node.parentNode !== parent) parent.appendChild(node);
+    }
+
+    function init() {
+      mount(document.getElementById('floating-tabs'));
+      clearInterval(timer);
+      timer = setInterval(paint, 1000);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) paint(); });
+    }
+
+    return { init, mount, paint };
+  })();
+
   /* ========== Tab 切换（双容器：floating + mobile） ========== */
   function renderTabs(pages, activeId) {
     const makeBtn = (p) => {
@@ -814,6 +960,9 @@
 
     if (floating) floating.innerHTML = floatingHTML;
     if (mobile) mobile.innerHTML = mobileHTML;
+    // 时钟节点单独建一次、每次重渲染再挂回去:
+    // 放进 floatingHTML 里的话,切一次页就重建一次,秒数会闪一下
+    if (floating) Clock.mount(floating);
 
     const onClick = (e) => {
       const btn = e.target.closest('button[data-page]');
@@ -833,6 +982,9 @@
       const r = await fetch(page.data, { cache: 'no-store' });
       if (!r.ok) throw new Error('HTTP ' + r.status + ' (' + page.data + ')');
       const data = await r.json();
+      /* 兜底:工具层(validate.py)应该在提交前就拦住坏数据。
+         万一漏了,这里把问题显示在页面顶部,而不是让人对着一张错版猜 */
+      showDataIssues(data);
       renderPage(data, page.id);
       // 切页后强制 ECharts resize + 关闭 popovers(位置可能错)
       setTimeout(() => {
@@ -846,8 +998,34 @@
     }
   }
 
+  /* 切主题时要用同一份数据重渲染,这里存一份 */
+  let lastRender = null;
+  function rerenderNow() {
+    if (lastRender) renderPage(lastRender.data, lastRender.pageId);
+  }
+
+  /* 数据校验横幅:只在 window.MVValidate 存在时工作(assets/validate.js) */
+  function showDataIssues(data) {
+    const old = document.querySelector('.data-banner');
+    if (old) old.remove();
+    const v = window.MVValidate && window.MVValidate.check(data);
+    if (!v || v.ok) return;
+    const wrap = document.querySelector('.wrap');
+    if (!wrap) return;
+    const el = document.createElement('div');
+    el.className = 'data-banner';
+    el.title = v.errors.map(e => e.path + '：' + e.msg).join('\n');
+    el.textContent = '⚠ 数据有 ' + v.errors.length + ' 处问题，页面可能不完整 · '
+      + v.errors[0].path + ' ' + v.errors[0].msg + '（悬停看全部）';
+    wrap.insertBefore(el, wrap.firstChild);
+  }
+
   /* ========== 渲染单个页面的内容 ========== */
   function renderPage(data, pageId) {
+    lastRender = { data, pageId };
+    /* 把当前页挂到 <body> 上:排版有几条规则是按页来的
+       (premarket 用两栏,其余页用三栏),靠它做作用域 */
+    document.body.dataset.page = pageId;
     // 关键:先清理旧 summary + kpi popover body,再 renderHeader
     // (旧 popover 已被 showPopover 移到 <body> 末尾,不在 header 内,innerHTML 替换清理不到)
     // (如果放在 renderHeader 之后,新生成的 summary-full 也会被误删,导致按钮失效)
@@ -890,8 +1068,13 @@
 
     content.innerHTML = html || '<div class="load-error" style="color:var(--sub)">该页面暂无内容</div>';
 
-    document.getElementById('footer').textContent = renderFooter(data.footer);
+    // 必须是 innerHTML:renderFooter 返回的是 rich() 处理过的 HTML,
+    // 用 textContent 会把 <b> 原样打进页面(页脚里那串 "<b>…</b>" 就是这么来的)
+    document.getElementById('footer').innerHTML = renderFooter(data.footer);
     if (data.title) document.title = data.title;
+
+    // 内容换过一次,旧表格节点全没了 —— 每次渲染后重新挂一遍边缘检测
+    trackTableEdges();
 
     // 更新 topbar 右上角"最后更新"时间（从 header.tags 找 🕐 开头的那条）
     const updatedTag = (data.header && data.header.tags || []).find(t => /🕐|最后更新/.test(t));
@@ -902,6 +1085,24 @@
     }
   }
 
+  /* ========== 表格横向滚动的边缘渐隐 ==========
+     窄栏里的宽表格必须横滑,但"字被硬切在卡片边缘"看起来像渲染坏了。
+     用 mask 让内容本身在边缘淡出,并且只在"这一侧真的还有内容"时淡出 ——
+     滚到头就该是完整的,否则最后一列永远缺一条边。
+     纯 CSS 做不到按滚动位置切换,所以这里加个被动 scroll 监听(每个表一次)。 */
+  function trackTableEdges() {
+    document.querySelectorAll('.table-wrap:not([data-edge-bound])').forEach(el => {
+      el.dataset.edgeBound = '1';
+      const update = () => {
+        const max = el.scrollWidth - el.clientWidth;
+        el.classList.toggle('can-left', el.scrollLeft > 2);
+        el.classList.toggle('can-right', el.scrollLeft < max - 2);
+      };
+      el.addEventListener('scroll', update, { passive: true });
+      update();
+    });
+  }
+
   function showError(msg) {
     document.getElementById('content').innerHTML =
       `<div class="load-error">⚠️ ${esc(msg)}</div>`;
@@ -910,6 +1111,8 @@
   /* ========== 启动 ========== */
   async function init() {
     Theme.init();
+    // 先挂上时钟:它不依赖数据,manifest 还没回来的时候顶栏就已经在走
+    Clock.init();
 
     let manifest;
     try {
@@ -947,11 +1150,14 @@
     if (body.parentElement !== document.body) {
       document.body.appendChild(body);
     }
-    // 先显示 + 限高,再量真实高度 — 避免 body 还在 hidden 时 scrollHeight=0
-    body.style.maxWidth = '520px';
-    body.hidden = false;
     const rect = trigger.getBoundingClientRect();
     const margin = 8;
+    // 先显示 + 限高,再量真实高度 — 避免 body 还在 hidden 时 scrollHeight=0
+    // 宽度上限要跟着视口走:写死 520px 在 430 宽的手机上会算出负数 left,
+    // 再被下面夹到 margin,浮层就贴左边缘了
+    const maxW = Math.min(520, window.innerWidth - margin * 2);
+    body.style.maxWidth = maxW + 'px';
+    body.hidden = false;
     // 动态 max-height:viewport 减去 trigger 上下方空间,留 16px 边距
     const spaceAbove = rect.top - margin;
     const spaceBelow = window.innerHeight - rect.bottom - margin;
@@ -960,9 +1166,11 @@
     body.style.maxHeight = maxH + 'px';
     const popH = body.offsetHeight;  // 真实高度(已 layout)
     // 默认在 trigger **上方**,浮窗底部紧贴 trigger 顶部(gap 0)
+    let above = true;
     let top = rect.top - popH;
     if (top < margin) {
       // 上方空间不够,放到下方,浮窗顶部紧贴 trigger 底部
+      above = false;
       top = rect.bottom;
       if (top + popH + margin > window.innerHeight) {
         // 上下都不够,贴 viewport 顶部
@@ -971,12 +1179,18 @@
     }
     // 左右夹在视口内
     let left = rect.left;
-    if (left + 520 + margin > window.innerWidth) {
-      left = window.innerWidth - 520 - margin;
+    if (left + maxW + margin > window.innerWidth) {
+      left = window.innerWidth - maxW - margin;
     }
     if (left < margin) left = margin;
     body.style.top = top + 'px';
     body.style.left = left + 'px';
+    /* 缩放原点放在"贴着 trigger 的那条边、对齐 trigger 中点"。
+       横向要按浮层自己的宽度算 —— trigger 的 x 和浮层的 x 不是一回事
+       (浮层会被左右夹进视口,两者常常错开几十像素)。 */
+    const popW = body.offsetWidth || maxW;
+    const ox = Math.max(0, Math.min(popW, rect.left + rect.width / 2 - left));
+    body.style.setProperty('--pop-origin', ox + 'px ' + (above ? popH : 0) + 'px');
   }
   document.addEventListener('click', (e) => {
     const trigger = e.target.closest('.popover-trigger');
@@ -1058,8 +1272,30 @@
   window.addEventListener('resize', maybeCloseOnScroll);
   // ESC 也关闭
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeAllPopovers();
+    if (e.key === 'Escape') { closeAllPopovers(); return; }
+    /* KPI 卡和事件卡是 div(不是 button),所以 Tab 到不了 —— 补上 tabindex
+       之后还得自己把 Enter/Space 翻成 click,否则"能聚焦但按了没反应"。
+       只认 target 就是卡片本身:焦点落在卡内文字上时不重复触发。 */
+    if (e.key === 'Enter' || e.key === ' ') {
+      const card = e.target.closest && e.target.closest('.kpi-pop');
+      if (card && card === e.target) { e.preventDefault(); card.click(); }
+    }
   });
+
+  /* 顶栏那条横线是否出现,取决于"内容有没有钻到栏底下"。
+     滚动事件里只做一次 class 切换,并用 rAF 合帧 —— 滚动是高频的,
+     不能在监听里直接读 scrollY 再写 DOM。 */
+  (function () {
+    let raf = 0;
+    function mark() {
+      raf = 0;
+      document.body.classList.toggle('scrolled', window.scrollY > 4);
+    }
+    window.addEventListener('scroll', function () {
+      if (!raf) raf = requestAnimationFrame(mark);
+    }, { passive: true });
+    mark();
+  })();
 
   init();
 })();

@@ -19,153 +19,314 @@
 </script>
 <script src="assets/echarts.min.js"></script>
 <style>
+  /* ============================================================
+     两套主题,一套结构
+     ------------------------------------------------------------
+     日间 = 冷白(白卡 + 12px 圆角 + 极淡投影)
+     夜间 = 极光(深色 + 流动光晕 + 磨砂卡片)
+     两套共用同一份排版骨架,只换 token 和"形状"规则。
+     改色只改 token,不要在组件里写死颜色。
+     ============================================================ */
   :root{
-    /* Light theme (default) */
-    --bg:#eef1f5; --card:#ffffff; --ink:#1f2937; --sub:#6b7280; --muted:#9ca3af;
-    --up:#e23c3c; --down:#1a9e57; --line:#e5e7eb; --line-soft:#eef0f3;
-    --accent:#2f5fd0; --accent-soft:#e8eefb;
-    --warn:#e8973c; --danger:#e23c3c;
-    --source-ok:#1a9e57; --source-fallback:#e8973c;
-    --header-grad-a:#2f5fd0; --header-grad-b:#3f7be0;
-    --float-bg:rgba(255,255,255,.92); --float-border:#e5e7eb;
+    color-scheme:light;
+    /* 日间:iOS 系统配色(systemGroupedBackground + label 层级) */
+    --bg:#f2f2f7;
+    --card:#ffffff;
+    --ink:#1d1d1f; --sub:#6e6e73; --muted:#6b6b74;
+    --up:#d70015; --down:#1f7a36;
+    --line:rgba(60,60,67,.16); --line-soft:rgba(60,60,67,.09);
+    --accent:#0071e3; --accent-soft:rgba(0,113,227,.10);
+    --warn:#b25000; --danger:#d70015;
+    --source-ok:#1f7a36; --source-fallback:#b25000;
+    --header-grad-a:#0071e3; --header-grad-b:#3aa0ff;
+    --float-bg:rgba(249,249,251,.72); --float-border:rgba(60,60,67,.12);
+    --surface:#ffffff;
+    /* 深度靠一层柔影,不靠边框 —— iOS 卡片就是这么做的 */
+    --card-shadow:0 1px 2px rgba(0,0,0,.05), 0 10px 30px -20px rgba(0,0,0,.28);
+    --serif:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+    --bar:56px;
+    /* 缓动曲线。CSS 自带的 ease-out 太弱 — 前 30% 动作不够快,
+       看起来像"迟了半拍"。这两条是 UI 里真正好用的形状:
+       进场急、收尾长(cubic-bezier(.23,1,.32,1)),
+       屏上位移则两端都收(另一条)。 */
+    --ease-out:cubic-bezier(.23,1,.32,1);
+    --ease-in-out:cubic-bezier(.77,0,.175,1);
+    /* 时长:按压 140 / 浮层 180 / 换肤 200。全部在 300ms 以内 */
+    --t-press:140ms;
+    --t-pop:180ms;
+    --t-theme:200ms;
+    --chart-ink:#1d1d1f; --chart-sub:#6e6e73; --chart-grid:rgba(60,60,67,.14);
+    --rule:rgba(60,60,67,.16);
     /* 响应式断点变量(默认 = 1920 大屏基线) */
     --section-pad: 13px 15px;
     --chart-h: 250px;
-    --kpi-val: 20px;
+    --kpi-val: 26px;
     --kpi-chg: 12.5px;
     --kpi-lbl: 13px;
     --kpi-min: 115px;
     --table-size: 14px;
-    --h2-size: 15.5px;
-    --wrap-pad: 60px 24px 24px;
+    --h2-size: 19px;
+    --wrap-pad: 78px 28px 56px;
     --content-max-w: none;  /* 大屏不加 max-width,完全展开 */
   }
   [data-theme="dark"]{
-    --bg:#0a0e16; --card:#131927; --ink:#e6ebf2; --sub:#9aa6b8; --muted:#6b7587;
-    --up:#ff5c5c; --down:#2ed47e; --line:#1f2638; --line-soft:#1a2030;
-    --accent:#5b8af0; --accent-soft:#1a2540;
-    --warn:#f5b556; --danger:#ff5c5c;
-    --source-ok:#2ed47e; --source-fallback:#f5b556;
-    --header-grad-a:#1d3a8a; --header-grad-b:#2f5fd0;
-    --float-bg:rgba(11,15,23,.92); --float-border:#1f2638;
+    color-scheme:dark;
+    /* 夜间:极光玻璃 */
+    --bg:#0a0a12; --card:rgba(28,28,48,.58); --ink:#eef0ff; --sub:#bcc0da; --muted:#8b8fae;
+    --up:#ff6b81; --down:#3ddc97; --line:rgba(255,255,255,.16); --line-soft:rgba(255,255,255,.08);
+    --accent:#8b7cff; --accent-soft:rgba(139,124,255,.16);
+    --warn:#ffc46b; --danger:#ff6b81;
+    --source-ok:#3ddc97; --source-fallback:#ffc46b;
+    --header-grad-a:#8b7cff; --header-grad-b:#22d3ee;
+    --float-bg:rgba(10,10,18,.86); --float-border:rgba(255,255,255,.10);
+    --surface:#16162a;            /* 弹层:玻璃会让底下的正文透上来,这里必须实心 */
+    --chart-ink:#eef0ff; --chart-sub:#bcc0da; --chart-grid:rgba(255,255,255,.14);
+    --rule:rgba(255,255,255,.26);
+    --card-shadow:0 24px 48px -36px rgba(0,0,0,.9);
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{background:var(--bg);}
   body{margin:0;color:var(--ink);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
-    line-height:1.5;
-    transition:background-color .25s ease, color .25s ease;
+    font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    /* 换肤不做过渡 —— 刻意不做。
+       以前 body 挂了 200ms 的背景渐隐,但卡片/文字/图表是硬切的
+       (换肤后立刻 re-render,画布要按新主题重画)。中间那 200ms 就成了
+       "深色卡片贴在一片还没暗下去的浅底上",比硬切更像崩了。
+       要么全都过渡,要么全都不过渡;画布通不了,那就全都不过渡。
+       留白交给极光层 450ms 的淡入 —— 它是唯一真能过渡的一层。 */
   }
+  ::selection{background:var(--ink);color:var(--bg);}
   .val, td, .kpi .val, .kpi .chg, .up, .down, .flat { font-variant-numeric: tabular-nums; }
 
-  /* ===== Floating control cards (top-left / top-right) ===== */
+  /* ===== 顶栏:三张页签 =====
+     以前是左上角一块浮起来的圆角药丸,压在内容上方,还要靠 .wrap 的
+     padding-top 让开。现在直接做成整条栏:高度固定 --bar,横贯全宽,
+     页签用【下划线】表示当前页 —— 报纸的栏目本来就是这么分的,
+     而且下划线比"加深底色"更不抢正文的注意力。 */
   .floating-tabs, .floating-meta{
     position:fixed; z-index:100;
-    background:var(--float-bg); backdrop-filter:saturate(180%) blur(14px);
-    -webkit-backdrop-filter:saturate(180%) blur(14px);
-    border:1px solid var(--float-border);
-    box-shadow:0 4px 18px -6px rgba(0,0,0,.18);
-    border-radius:10px;
-    /* 浮窗最大宽度 = 视口 - 左右各 12px 边距,避免文字溢出到屏幕外 */
-    max-width:calc(100vw - 24px);
-    min-width:0;  /* 防止 flex/grid 撑大 */
+    min-width:0;
   }
-  .floating-tabs{ top:12px; left:12px; padding:3px; display:none; max-width:min(calc(100vw - 24px), 360px); overflow:hidden; }
-  .floating-meta{ top:12px; right:12px; padding:5px 9px; display:none; gap:6px; align-items:center; font-size:11.5px; color:var(--sub); overflow:hidden; }
-  .floating-meta .updated{ font-variant-numeric: tabular-nums; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .floating-tabs{
+    top:0; left:0; right:0; height:var(--bar);
+    display:none; align-items:center; gap:2px; padding:0 24px;
+    background:var(--float-bg);
+    backdrop-filter:saturate(180%) blur(20px);
+    -webkit-backdrop-filter:saturate(180%) blur(20px);
+    /* 这条线默认是透明的:页面停在顶部时,顶栏和内容本来就是分开的两块,
+       画一条线等于凭空多一条分割。内容一钻到栏底下(scrolled),线才出现。 */
+    border-bottom:1px solid transparent;
+    transition:border-color var(--t-theme) var(--ease-out);
+  }
+  body.scrolled .floating-tabs{ border-bottom-color:var(--float-border); }
+  .floating-meta{
+    top:0; right:24px; height:var(--bar);
+    display:none; gap:10px; align-items:center;
+    font-size:11.5px; color:var(--muted);
+  }
+  .floating-meta .updated{ font-variant-numeric: tabular-nums; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing:.02em; }
   .floating-tabs button{
-    border:none; background:transparent;
-    padding:5px 10px; font-size:12px; font-weight:600;
-    color:var(--sub); border-radius:7px; cursor:pointer;
-    transition:all .15s; font-family:inherit;
-    display:inline-flex; align-items:center; gap:4px;
-    white-space:nowrap;  /* 防止 tab 文字被截断换行撑高浮窗 */
+    position:relative; border:0; background:transparent;
+    height:34px; align-self:center; padding:0 15px; border-radius:999px;
+    font-size:13px; font-weight:600; letter-spacing:.01em;
+    color:var(--sub); cursor:pointer; font-family:inherit;
+    display:inline-flex; align-items:center; gap:6px;
+    transition:background-color .15s linear, color .15s linear;
+    white-space:nowrap;
   }
-  .floating-tabs button:hover{ background:var(--accent-soft); color:var(--ink); }
-  .floating-tabs button.active{ background:var(--accent); color:#fff; }
-  .floating-tabs .ico{ font-size:13px; }
-  .floating-tabs .brand-dot{
-    width:22px; height:22px; border-radius:6px;
-    background:linear-gradient(135deg,var(--header-grad-a),var(--header-grad-b));
-    display:inline-flex; align-items:center; justify-content:center;
-    color:#fff; font-size:12px; margin-right:4px;
+  .floating-tabs button::after{
+    content:""; position:absolute; left:14px; right:14px; bottom:-1px; height:2px;
+    background:transparent; transition:background-color .15s linear;
   }
-  .floating-tabs .divider{ width:1px; background:var(--float-border); margin:4px 2px; }
+  .floating-tabs button:hover{ color:var(--ink); background:rgba(118,118,128,.14); }
+  .floating-tabs button.active{ color:#fff; background:var(--ink); }
+  .floating-tabs button.active::after{ display:none; }
+  .floating-tabs button:focus-visible{ outline:2px solid var(--accent); outline-offset:-4px; }
+  /* ===== 顶栏时钟(仅桌面) =====
+     紧跟在页签右边,用一条竖线分开:左边是"去哪一页",右边是"现在几点"。
+     两个信息都是"当前位置感",放在一起成立;隔着整条栏各放一头反而散。
+     日期压成 muted、时间提成 sub + 600 号:一眼先看到时间,日期是补充。
+     tabular-nums 必须加 —— 等宽数字,秒数跳动时整串不会左右抖。 */
+  .top-clock{
+    display:inline-flex; align-items:center;
+    margin-left:16px; align-self:center;
+    font-size:11.5px; line-height:1; letter-spacing:.02em;
+    color:var(--muted); font-variant-numeric:tabular-nums;
+    white-space:nowrap; user-select:none;
+  }
+  /* 分隔线做成伪元素而不是 border-left:border 只有 12px(跟着行高),
+     在 34px 高的页签旁边显得矮一截。定死 16px 才像一条刻意的分隔。 */
+  .top-clock::before{
+    content:""; display:block; width:1px; height:16px;
+    background:var(--line); margin-right:16px;
+  }
+  /* 间距只加在日期后面:时分和秒必须是连着的「18:21:51」 */
+  .top-clock-date{ color:var(--muted); margin-right:8px; }
+  /* 时分和秒同一档:11.5px 上把秒调淡/调细并不会"安静",只会让人以为
+     那截字没渲染完 —— 一个时间就是一个整体,不该在中间断一次重量。 */
+  .top-clock-hm, .top-clock-sec{ color:var(--ink); font-weight:600; }
+  @media (max-width: 1099px){
+    /* 1100 以下栏里开始挤:页签 + 时间 + 右侧"最后更新"三段会撞。
+       这里只留时间,日期让给右侧那行的语境去兜 */
+    .top-clock-date{ display:none; }
+  }
+
+  /* 页签里的小图标在桌面上会变成一排彩色 emoji,和这页的黑白墨线打起来;
+     窄屏才留(那里图标帮人认栏目) */
+  .floating-tabs .ico{ display:none; }
+  /* 方框里塞一个彩色 emoji 在墨线体系里很扎眼;页签本身已经够认 */
+  .floating-tabs .brand-dot{ display:none; }
+  .floating-tabs .divider{ width:1px; height:18px; background:var(--line); margin:0 6px; }
   .theme-toggle{
     border:1px solid var(--line); background:transparent;
-    color:var(--ink); width:24px; height:24px; border-radius:6px;
+    color:var(--ink); width:30px; height:30px; border-radius:10px;
     cursor:pointer; display:inline-flex; align-items:center; justify-content:center;
-    font-size:12px; transition:all .15s;
+    font-size:12px; line-height:1;
+    transition:background-color var(--t-press) linear, border-color var(--t-press) linear,
+               transform var(--t-press) var(--ease-out);
   }
   .theme-toggle:hover{ background:var(--accent-soft); border-color:var(--accent); }
+  /* 按下去要"陷进去"一点。1px 的位移几乎看不出来,缩放才摸得到 */
+  .theme-toggle:active{ transform:scale(.92); }
+  .theme-toggle:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
 
-  /* ===== Mobile inline tabs (always shown on mobile, hidden on desktop) ===== */
+  /* ===== 窄屏页签:同一条下划线语言,贴顶吸住 ===== */
   .mobile-tabs{
-    display:flex; background:var(--card); border-radius:12px; padding:4px;
-    margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,.05);
-    gap:4px; position:sticky; top:8px; z-index:10;
+    display:flex; gap:4px; background:#e5e5ea; border:0; border-radius:14px; padding:4px;
+    margin:0 0 16px;
+    /* 吸顶必须贴 0:以前 top:8px,那条 8px 的缝会让正文从上面漏出来,
+       滚动时在最顶端露出一条被切断的字。 */
+    position:sticky; top:0; z-index:20;
   }
   .mobile-tabs button{
-    flex:1; border:none; background:transparent; padding:10px 6px;
-    font-size:13px; font-weight:600; color:var(--sub); border-radius:9px;
-    cursor:pointer; transition:all .15s; font-family:inherit; line-height:1.2;
+    flex:1; position:relative; border:0; background:transparent;
+    padding:8px 4px 7px; border-radius:9px;
+    font-size:13px; font-weight:600; color:var(--sub);
+    cursor:pointer; font-family:inherit; line-height:1.2;
+    transition:background-color .15s linear, color .15s linear;
   }
-  .mobile-tabs button.active{ background:var(--accent); color:#fff;
-    box-shadow:0 1px 3px rgba(47,95,208,.3); }
-  .mobile-tabs button:hover:not(.active){ background:#f8fafc; }
-  .mobile-tabs .ico{ display:block; font-size:16px; margin-bottom:2px; }
+  .mobile-tabs button::after{
+    content:""; position:absolute; left:10px; right:10px; bottom:-1px; height:2px;
+    background:transparent; transition:background-color .15s linear;
+  }
+  .mobile-tabs button.active{
+    color:var(--ink); background:#fff; box-shadow:0 1px 3px rgba(16,24,40,.12);
+  }
+  .mobile-tabs button.active::after{ display:none; }
+  .mobile-tabs button:focus-visible{ outline:2px solid var(--accent); outline-offset:-4px; }
+  .mobile-tabs .ico{ display:block; font-size:14px; margin-bottom:3px; opacity:.85; }
 
   /* ===== Main wrap (mobile default) ===== */
   .wrap{max-width:480px;margin:0 auto;padding:14px 12px 44px;}
 
-  /* ===== Hero header (gradient card) ===== */
+  /* ===== 报头 =====
+     结构没动:标签行 → h1 → summary → 阅读全文。
+     日间是一条 1px 细线收边,夜间换成发光渐变标题(见文件末尾的主题覆盖) */
   header.top{
-    background:linear-gradient(135deg,var(--header-grad-a),var(--header-grad-b));
-    color:#fff; border-radius:12px; padding:14px 18px; margin-bottom:10px;
-    box-shadow:0 4px 18px -8px rgba(47,95,208,.45);
+    background:transparent; color:var(--ink);
+    border:0; padding:0 0 4px; margin-bottom:26px; box-shadow:none;
   }
-  header.top h1{margin:0 0 5px;font-size:19px;font-weight:700;line-height:1.3;}
-  header.top p{margin:0;font-size:14px;opacity:.94;line-height:1.6;}
-  header.top .tags-row{ display:flex; flex-wrap:wrap; gap:5px; margin-bottom:7px; }
-  .tag{display:inline-block;background:rgba(255,255,255,.18);border-radius:5px;padding:2px 8px;font-size:12.5px;white-space:nowrap;}
-  .tag-pop{cursor:pointer;transition:background .15s;}
-  .tag-pop:hover{background:rgba(255,255,255,.32);}
-  /* section 内的 tag-row:统一大小、完整显示、换行(白底深字) */
-  section .tags-row{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 8px;align-items:flex-start;}
-  section .tag{white-space:normal;line-height:1.35;max-width:100%;
-    background:var(--accent-soft);color:var(--accent);}
+  /* iOS Large Title:34pt / 紧凑行高 / 负字距。字号越大,字距越要收紧 */
+  header.top h1{
+    margin:0 0 10px; font-family:inherit;
+    font-size:34px; font-weight:700; line-height:1.16; letter-spacing:-.022em;
+    color:var(--ink); text-wrap:balance;
+  }
+  header.top p{
+    margin:0; font-size:15.5px; line-height:1.85; color:var(--sub);
+    max-width:44em; letter-spacing:.005em;   /* 中文一行 ~44 字,是能一口气读完的上限 */
+  }
+  header.top p b{ color:var(--ink); font-weight:600; }
+  /* 宽屏上把导语排成两栏:报纸的头版就是这么排的,也顺手填掉
+     单栏 44em 右侧那一大片空白。窄屏永远一栏。 */
+  @media (min-width: 1180px){
+    header.top p{ max-width:none; column-count:2; column-gap:52px; }
+  }
+  header.top .tags-row{ display:flex; flex-wrap:wrap; gap:6px; margin:0 0 14px; align-items:center; }
+  header.top .tag{
+    display:inline-block; background:rgba(118,118,128,.12); border:0; border-radius:999px;
+    padding:3px 10px; font-size:11px; font-weight:500; letter-spacing:.01em; line-height:1.5;
+    color:var(--sub); white-space:nowrap;
+    transition:background-color .15s linear, color .15s linear;
+  }
+  header.top .tag::before{ display:none; }
+  /* 只有"长到 JS 必须截断"的标签才限宽(类名由 render.js 给)。
+     一刀切 420 会把真实数据里 50–70 字的行情速览也砍掉半句;
+     这条规则只治那条 80+ 字的 URL */
+  header.top .tag--long{
+    max-width:min(420px, 100%);
+    overflow:hidden; text-overflow:ellipsis;
+  }
+  .tag-pop{ cursor:pointer; }
+  @media (hover:hover){
+    header.top .tag:hover{ background:var(--accent-soft); color:var(--accent); }
+  }
+  /* section 内的标签:换成描边小牌,不再是蓝底药丸 */
+  section .tags-row{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;align-items:flex-start;}
+  section .tag{
+    white-space:normal;line-height:1.4;max-width:100%;padding:2px 7px;
+    background:transparent;color:var(--sub);
+    border:1px solid var(--line);border-radius:8px;font-size:11.5px;letter-spacing:.02em;
+  }
 
-  /* ===== Sections ===== */
+  /* ===== 栏目 ===== */
   section{
-    background:var(--card); border-radius:10px; padding:13px 15px; margin-bottom:10px;
-    box-shadow:0 1px 2px rgba(0,0,0,.04);
-    border:1px solid var(--line-soft);
-    transition:box-shadow .2s ease, transform .2s ease;
+    background:var(--card); border:0;
+    border-radius:16px; padding:16px 18px; margin-bottom:14px;
+    box-shadow:var(--card-shadow);
     display:flex; flex-direction:column;  /* 让 popover-note 用 margin-top:auto 推到底 */
   }
-  section:hover{box-shadow:0 4px 14px -4px rgba(0,0,0,.08);}
-  section h2{margin:0 0 7px;font-size:15.5px;font-weight:700;display:flex;align-items:center;gap:6px;}
-  section h2 .bar{width:3px;height:15px;background:var(--accent);border-radius:2px;display:inline-block;}
+  section h2{
+    margin:0 0 10px; font-family:inherit; font-size:16px; font-weight:650;
+    line-height:1.4; letter-spacing:-.005em; color:var(--ink);
+    display:flex; align-items:center; gap:8px;
+  }
+  /* 色条去掉:分组靠字重和间距,不靠装饰 */
+  section h2 .bar{ display:none; }
+  /* h2 是 flex 容器:标题里一旦出现 <b>,它自己会变成一个 flex item,
+     整行被拆成几块、中间多出 gap。文字必须包在一个 span 里 */
+  section h2 .h2-text{ min-width:0; }
 
-  .src{font-size:13px;color:var(--sub);margin:0 0 7px;line-height:1.5;}
+  .src{font-size:12.5px;color:var(--muted);margin:0 0 10px;line-height:1.65;}
+  /* 空表 / 空 KPI 段的占位行。没有它,页面上只剩表头和几百像素空白 */
+  .empty-row{ color:var(--muted); font-size:13px; text-align:center; padding:20px 0; }
+  .table-wrap td.empty-row{ padding:24px 10px; border-bottom:0; }
+  /* banner(「一、盘前关键关注」这种整排报价)不套外层卡片:
+     外面的框和里面 6 个框会互相打架 */
+  section.kpi-strip{
+    background:transparent; border:0; border-radius:0; padding:4px 0 0; box-shadow:none;
+  }
+  /* banner 段没有卡片,它的标题就是 iOS 那种"分组标签":小、灰、贴在上面 */
+  section.kpi-strip h2{
+    font-size:13px; font-weight:600; letter-spacing:.02em; color:var(--sub);
+    margin:0 0 8px; padding-left:2px;
+  }
+  /* 数据里带 📌🔥🚨 这类 emoji。试过 font-variant-emoji:text 想把它们
+     压成单色,结果一半 emoji 变单色、一半找不到文本字形掉成方块 ——
+     比彩色更难看,所以放弃:emoji 归数据管,这里不动它 */
 
   /* ===== Tables ===== */
   .table-wrap{ width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
-  /* 横向可滚动的提示：左右两条"盖子"用 local,跟着内容一起滚,
-     两端的阴影用 scroll,钉在容器上。能往右滚时右缘出现一条阴影,
-     滚到头它自己消失 —— 不用 JS,也不改变任何盒模型尺寸。
-     之前表格超宽时右半列直接被切掉,看上去像页面坏了,其实能滚,
-     只是没人知道能滚。表头有实底,阴影只在透明的表体行上透出来。 */
+  /* 横向可滚动的边缘渐隐。
+     老做法是往 .table-wrap 上铺四条 background 渐变(两层盖子 + 两层阴影),
+     但 background 是画在内容【底下】的 —— 文字照样被硬切在卡片边缘上,
+     看起来像渲染坏了。改成 mask:淡出的是内容本身。
+     左右各自独立:滚到左边时左边不淡,滚到底时右边不淡,
+     否则最后一列永远缺一条边。(滚动位置由 render.js 给 .can-left/.can-right) */
   .table-wrap{
-    background:
-      linear-gradient(to right, var(--card) 40%, rgba(0,0,0,0)) left center,
-      linear-gradient(to left,  var(--card) 40%, rgba(0,0,0,0)) right center,
-      radial-gradient(farthest-side at 0 50%, rgba(0,0,0,.16), rgba(0,0,0,0)) left center,
-      radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,.16), rgba(0,0,0,0)) right center;
-    background-repeat:no-repeat;
-    background-size:34px 100%, 34px 100%, 13px 100%, 13px 100%;
-    background-attachment:local, local, scroll, scroll;
+    --fade-l:0px; --fade-r:0px;
+    -webkit-mask-image:linear-gradient(to right,
+      transparent 0, #000 var(--fade-l),
+      #000 calc(100% - var(--fade-r)), transparent 100%);
+    mask-image:linear-gradient(to right,
+      transparent 0, #000 var(--fade-l),
+      #000 calc(100% - var(--fade-r)), transparent 100%);
   }
+  .table-wrap.can-left{ --fade-l:22px; }
+  .table-wrap.can-right{ --fade-r:22px; }
   /* td/th 不换行,表格按内容自然变宽,table-wrap 横向 scroll */
   .table-wrap table{ min-width: max-content; }
   .table-wrap td{ white-space:nowrap; }
@@ -175,21 +336,21 @@
      vertical-align: top 让短内容贴顶,不被 row stretch 居中显出"空行"
      padding 显式重置 7px 10px:避免被页面 .wrap{ padding: 60px 24px 24px } 撑高 td */
   .table-wrap td.wrap, .table-wrap th.wrap{
-    white-space:normal; word-break:break-all;
+    white-space:normal; word-break:normal; overflow-wrap:anywhere;
     max-width: 260px;          /* 列内容宽,长文字强制换行 */
     vertical-align: top;
     padding: 7px 10px;
   }
   /* 短 wrap 列(事件等):更窄 max-width,让长文字多换几行 */
   .table-wrap td.wrap-tight, .table-wrap th.wrap-tight{
-    white-space:normal; word-break:break-all;
+    white-space:normal; word-break:normal; overflow-wrap:anywhere;
     max-width: 200px;
     vertical-align: top;
     padding: 7px 10px;
   }
   /* 宽 wrap 列(超长文字如"影响"):更大 max-width,大幅减少行数 */
   .table-wrap td.wrap-wide, .table-wrap th.wrap-wide{
-    white-space:normal; word-break:break-all;
+    white-space:normal; word-break:normal; overflow-wrap:anywhere;
     max-width: 460px;
     vertical-align: top;
     padding: 7px 10px;
@@ -202,21 +363,24 @@
   /* 不强制 min-width,让 grid 1fr 生效(否则表格会撑开 section 卡片) */
   table{width:100%;border-collapse:collapse;font-size:14.5px;border-spacing:0;
     table-layout:auto;}
+  /* 表头 = 报纸的栏头:小字、加宽字距、压一条 2px 墨线。
+     sticky 必须有实底,否则滚动时下面的行会从字缝里透出来 */
   thead th{
-    background:#f6f8fb; color:#4b5563; font-weight:600; font-size:13.5px;
-    text-transform:uppercase; letter-spacing:.03em;
-    padding:9px 10px; text-align:right; border-bottom:1.5px solid var(--line);
+    background:transparent; color:var(--sub); font-weight:600; font-size:12px;
+    /* .08em 是报纸栏头的字距,汉字被拉开会读成"收 盘 价";
+       iOS 的表头标签只是小一号、稍加粗,字距几乎不动 */
+    letter-spacing:.03em;
+    padding:9px 10px; text-align:right; border-bottom:1px solid var(--line-soft);
     position:sticky; top:0; z-index:1; white-space:nowrap;
   }
-  [data-theme="dark"] thead th{background:#0f1420; color:#9aa6b8;}
   thead th:first-child, thead th.text-left{ text-align:left; }
-  th,td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--line-soft);
+  th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--line-soft);
     vertical-align:top;}    /* 顶部对齐,wrap 列短内容跟数字列同行不偏移 */
   th:first-child,td:first-child{text-align:left;}
-  tbody tr:nth-child(even){ background:rgba(0,0,0,.012); }
-  [data-theme="dark"] tbody tr:nth-child(even){ background:rgba(255,255,255,.018); }
-  tbody tr{transition:background-color .12s ease;}
-  tbody tr:hover{background:var(--accent-soft);}
+  tbody tr{transition:background-color .12s linear;}
+  @media (hover:hover){
+    tbody tr:hover{ background:var(--accent-soft); }
+  }
   tbody tr:last-child td{border-bottom:none;}
 
   .up{color:var(--up);font-weight:600;}
@@ -224,46 +388,56 @@
   .flat{color:var(--sub);font-weight:600;}
   .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--sub);}
   .col-code{display:none;}
-  .pill{display:inline-block;padding:2px 8px;border-radius:9px;font-size:13px;font-weight:600;letter-spacing:.02em;}
-  .pill.breach{background:#fde8e8;color:var(--danger);}
-  [data-theme="dark"] .pill.breach{background:rgba(255,92,92,.15);color:var(--danger);}
-  .pill.near{background:#fef3e2;color:var(--warn);}
-  [data-theme="dark"] .pill.near{background:rgba(245,181,86,.15);color:var(--warn);}
-  .pill.ok{background:#e8f6ee;color:var(--down);}
-  [data-theme="dark"] .pill.ok{background:rgba(46,212,126,.15);color:var(--down);}
+  /* 状态 = 盖章:描边矩形 + 同色字。比实心药丸安静,但一眼能认出是"标记" */
+  .pill{display:inline-block;padding:1px 7px;border-radius:6px;font-size:11.5px;
+    font-weight:600;letter-spacing:.04em;border:1px solid currentColor;background:transparent;}
+  .pill.breach{color:var(--danger);background:transparent;}
+  .pill.near{color:var(--warn);background:transparent;}
+  .pill.ok{color:var(--down);background:transparent;}
   .srcfallback{color:var(--source-fallback);font-weight:600;}
   .source-ok{color:var(--source-ok);font-weight:600;}
 
   .chart{width:100%;height:200px;}
+  /* 图表在深色底上由 render.js 切到 ECharts 的 dark 主题(轴/网格/tooltip 跟着变),
+     这里只把画布背景交给卡片,别再铺一层白底 */
 
   /* Note: popover 浮窗 — 点击按钮在**上方**弹出,点别处自动关闭 */
   .popover-note{ margin-top:auto; padding-top:8px; position:relative; z-index:99999; isolation:isolate; }
   /* event-kpi-grid 后面跟 note 时,不加 margin-top:auto(否则撑出大片空白) */
   section:has(> .event-kpi-grid) > .popover-note{ margin-top:10px; }
+  /* "详情 / 解读"从实心蓝按钮改成一条墨线 + 小字:它每个栏目都有一个,
+     做成按钮会和真正的主操作抢注意力 */
   .popover-trigger{
     width:100%; box-sizing:border-box;
-    background:var(--accent-soft); border:1px solid transparent; border-radius:6px;
-    padding:7px 11px; font-size:12.5px; color:var(--accent);
+    background:transparent; border:0; border-top:1px solid var(--line-soft);
+    border-radius:0;
+    margin-top:8px; padding:9px 0 0;
+    font-size:11.5px; color:var(--muted); letter-spacing:.06em;
     cursor:pointer; font-family:inherit; font-weight:500;
-    display:flex; align-items:center; justify-content:center; gap:6px;
-    transition:background .15s, border-color .15s, color .15s;
+    display:flex; align-items:center; justify-content:flex-start; gap:7px;
+    transition:color .15s linear;
   }
-  .popover-trigger:hover{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  @media (hover:hover){
+    .popover-trigger:hover{ color:var(--ink); }
+  }
+  .popover-trigger:active{ opacity:.6; }
+  .popover-trigger:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
   .popover-trigger::before{
-    content:""; display:inline-block; width:13px; height:13px; flex:0 0 13px;
+    content:""; display:inline-block; width:11px; height:11px; flex:0 0 11px;
     background:currentColor;
     -webkit-mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z' fill='black'/></svg>") center/contain no-repeat;
             mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z' fill='black'/></svg>") center/contain no-repeat;
   }
   .popover-trigger::after{
-    content:"详情 / 解读"; font-weight:500;
+    content:"详情 / 解读 →"; font-weight:500;
   }
-  .popover-note.open .popover-trigger{ background:var(--accent); color:#fff; border-color:var(--accent); }
-  /* 关注度 ★ 字符:按数量分级染色 + 加大,避免字体重叠导致颜色不一致 */
-  .stars-5{ color:#dc2626; font-size:14px; letter-spacing:1px; font-weight:600; }
-  .stars-4{ color:#ea580c; font-size:13px; letter-spacing:1px; }
-  .stars-3{ color:#ca8a04; font-size:12.5px; letter-spacing:1px; }
+  .popover-note.open .popover-trigger{ color:var(--ink); background:transparent; border-color:var(--line-soft); }
+  /* 关注度 ★ 字符:按数量分级染色,色值收敛到墨红/墨橙/墨金,不用荧光色 */
+  .stars-5{ color:var(--up); font-size:13.5px; letter-spacing:1px; font-weight:600; }
+  .stars-4{ color:var(--warn); font-size:13px; letter-spacing:1px; }
+  .stars-3{ color:var(--warn); font-size:12.5px; letter-spacing:1px; opacity:.8; }
   .stars-low{ color:var(--muted); font-size:12px; }
+  .stars-o{ color:var(--line); font-size:13px; letter-spacing:1px; }   /* 5 分制里"差的那一格" */
   /* 星星后的等级文字(原 emoji 标签的文字部分,如"三点验证的收尾") */
   .star-label{ font-size:12.5px; color:var(--ink); font-weight:500; white-space:normal; }
   /* ★ 数量 > 3 时拆 2 行:PC 端隐藏 br 保持单行(避免破坏布局),移动端强制换行 */
@@ -281,119 +455,173 @@
     margin-top:8px;
   }
   .event-kpi{
-    padding:10px 11px;
-    background:var(--card-bg, #fff);
+    padding:11px 12px;
+    background:transparent;
     border:1px solid var(--line);
-    border-radius:8px;
+    border-radius:12px;
     cursor:pointer;
-    transition:all .15s ease;
+    transition:background-color var(--t-press) linear, border-color var(--t-press) linear,
+               transform var(--t-press) var(--ease-out);
     display:flex; flex-direction:column;
-    min-height:88px;
+    min-height:124px;
   }
-  [data-theme="dark"] .event-kpi{ background:#0f1420; }
-  .event-kpi:hover{
-    border-color:var(--accent);
-    transform:translateY(-1px);
-    box-shadow:0 4px 10px rgba(0,0,0,.06);
+  @media (hover:hover){
+    /* 只换底色,不换描边:描边跳成墨色那一下太响,像被选中了 */
+    .event-kpi:hover{ background:var(--accent-soft); }
   }
-  /* 第 1 行:★ 关注度(独占一行,重要性最突出) */
+  .event-kpi:active{ transform:scale(.98); }
+  .event-kpi:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  /* 卡片四段,从上到下:星级 → 标题 → 正文 → 时间
+     星级单独占一行,和标题之间用一根细线隔开:它是"这条消息有多重要"
+     的标尺,不该和标题抢同一行 */
   .event-kpi-stars{
-    display:block; margin-bottom:5px; padding-bottom:5px;
-    border-bottom:1px dashed var(--line);
-    min-height:18px;
+    display:block; margin:0 0 9px; padding-bottom:8px;
+    border-bottom:1px solid var(--line-soft);
+    line-height:1;
   }
+  .event-kpi-stars:empty{ display:none; }   /* 没有关注度数据时不占一行 */
   .event-kpi-stars .star-label{ font-size:11.5px; color:var(--sub); }
-  /* 第 2 行:事件名称 */
+  /* 第 2 行:标题 */
   .event-kpi-title{
-    font-size:12.5px; line-height:1.4; color:var(--ink); font-weight:600;
-    margin-bottom:4px;
-    /* 多行换行,长事件名 3 行内显示 */
+    font-size:13px; line-height:1.45; color:var(--ink); font-weight:600;
+    margin-bottom:6px;
+    /* 多行换行,长标题 3 行内显示 */
     display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;
     overflow:hidden;
   }
-  /* 第 3 行:时间(推到底部对齐) */
+  /* 第 3 行:正文(原来只藏在 popover 里,卡片上看不到内容) */
+  .event-kpi-body{
+    font-size:12px; line-height:1.6; color:var(--sub);
+    margin-bottom:9px;
+    display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  /* 第 4 行:时间(推到底部对齐) */
   .event-kpi-time{
-    font-size:11.5px; color:var(--sub); font-variant-numeric:tabular-nums;
+    font-size:11px; line-height:1.5; color:var(--muted); font-variant-numeric:tabular-nums;
     margin-top:auto;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+    overflow:hidden;
   }
   /* popover 内:星星 / 事件 / 时间 / 影响 */
   .event-kpi-stars-pop{ margin-bottom:8px; }
   .event-kpi-title-pop{
     -webkit-line-clamp:none; display:block; font-weight:600;
-    margin-bottom:6px;
+    margin-bottom:8px; font-size:14px;
   }
-  .event-kpi-time-pop{ margin-bottom:10px; padding-bottom:10px; border-bottom:1px dashed var(--line); }
+  .event-kpi-body-pop{
+    -webkit-line-clamp:none; display:block; font-size:13px; color:var(--ink);
+    line-height:1.75; margin-bottom:10px;
+  }
+  .event-kpi-time-pop{ margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid var(--line-soft); }
   .impact-text{
     font-size:13px; line-height:1.7; color:var(--ink); font-weight:500;
   }
   .impact-text b{ font-weight:700; }
   .popover-body{
     position:fixed; z-index:99999;
-    background:var(--bg); border:1px solid var(--line); border-radius:10px;
-    padding:12px 14px; min-width:280px; max-width:520px;
+    background:var(--surface); border:0; border-radius:16px;
+    padding:16px 18px; min-width:280px; max-width:520px;
     /* 限高 + 内部 scroll,避免长 popover 溢出屏幕(默认 60vh,
        JS 动态根据 trigger 位置调成 viewport 剩余空间) */
     max-height:60vh; overflow-y:auto; overflow-wrap:break-word;
-    font-size:12.5px; line-height:1.65; color:var(--sub);
-    box-shadow:0 8px 28px rgba(0,0,0,0.14), 0 2px 6px rgba(0,0,0,0.06);
+    font-size:13px; line-height:1.72; color:var(--sub);
+    box-shadow:0 0 0 .5px rgba(0,0,0,.09),
+               0 2px 6px rgba(0,0,0,.10),
+               0 18px 44px -8px rgba(0,0,0,.26);
     /* scrollbar 美化 */
-    scrollbar-width:thin; scrollbar-color:#cbd5e1 transparent;
+    scrollbar-width:thin; scrollbar-color:var(--line) transparent;
+    /* 浮层要从"它挂着的那个按钮"上长出来,不能从自己正中间放大。
+       默认值 50% 100% 是"底部中点"(绝大多数浮层弹在按钮上方);
+       JS 每次显示前会按真实位置重算,写进 --pop-origin。 */
+    transform-origin:var(--pop-origin, 50% 100%);
+    transition:opacity var(--t-pop) var(--ease-out), transform var(--t-pop) var(--ease-out);
   }
-  /* summary 展开按钮:header 末尾的"阅读全文"按钮(实色背景,显眼) */
+  /* 进场:0.96 → 1 + 淡入。@starting-style 只在「从 display:none 切到可见」
+     的那一帧生效,所以不用 JS 加类、不用 setTimeout 改状态、也不会在
+     后续重排时重播。0.96 而不是 0 —— 真实世界的东西不会从无到有。
+     退场不做动画:浮层是被"点别处/滚动"关掉的,关得住才跟手。 */
+  @starting-style{
+    .popover-body:not([hidden]){ opacity:0; transform:scale(.96); }
+  }
+  /* 展开全文:改成报纸的"转版"标记(小字 + 下划线),不再是蓝色药丸 */
   .summary-expand-wrap{
-    display:flex; justify-content:flex-start; margin-top:14px;
+    display:flex; justify-content:flex-start; margin-top:16px;
   }
   .summary-expand{
     display:inline-flex; align-items:center; gap:4px;
     background:var(--accent); color:#fff;
-    /* 蓝色 header 背景下:加白色描边让按钮更清晰可辨 */
-    border:1.5px solid rgba(255,255,255,.55);
-    border-radius:18px;
-    font-size:12.5px; font-weight:600; letter-spacing:.02em;
-    padding:7px 16px; cursor:pointer;
-    transition:all .15s ease;
-    box-shadow:0 2px 4px rgba(37,99,235,.18);
+    border:0; border-radius:999px;
+    font-size:13px; font-weight:600; letter-spacing:.01em;
+    padding:8px 16px; cursor:pointer;
+    transition:background-color var(--t-press) linear, color var(--t-press) linear,
+               filter var(--t-press) linear, transform var(--t-press) var(--ease-out);
   }
-  .summary-expand:hover{
-    background:#1d4ed8; transform:translateY(-1px);
-    box-shadow:0 4px 8px rgba(37,99,235,.28);
+  @media (hover:hover){
+    .summary-expand:hover{ filter:brightness(1.08); }
   }
-  .summary-expand:active{ transform:translateY(0); }
+  .summary-expand:active{ transform:scale(.96); }
+  .summary-expand:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; }
+  .summary-expand::after{ content:"→"; display:inline; margin-left:6px; }
   .popover-body::-webkit-scrollbar{ width:6px; }
-  .popover-body::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:3px; }
-  [data-theme="dark"] .popover-body{ background:#0f1420; box-shadow:0 8px 28px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.3); }
+  .popover-body::-webkit-scrollbar-thumb{ background:var(--line); border-radius:0; }
   .popover-body[hidden]{ display:none; }
   .popover-body b{ color:var(--ink); font-weight:600; }
-  .popover-body .src{ display:block; margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--line); color:var(--muted); font-size:11.5px; }
+  .popover-body .src{ display:block; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid var(--line-soft); color:var(--muted); font-size:11.5px; }
 
-  /* ===== KPI cards ===== */
+  /* ===== KPI 卡片 =====
+     标签小、数字大、涨跌压底下 */
   .kpi-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:0;}
   .kpi{
-    background:#f8fafc; border:1px solid var(--line); border-radius:8px;
-    padding:10px 13px; transition:all .15s;
+    /* 让 .val 能按卡片自身宽度算字号(cqi),不是按视口 */
+    container-type:inline-size;
+    background:var(--card); border:0;
+    border-radius:12px;
+    box-shadow:var(--card-shadow);
+    padding:12px 14px;
+    transition:background-color var(--t-press) linear,
+               transform var(--t-press) var(--ease-out);
     display:flex; flex-direction:column;  /* chg 推到底部对齐 */
     /* min-height 统一所有 kpi 卡片高度,短 chg 留底部空白跟长 chg 卡片对齐 */
     min-height:118px;
     /* min-width: 0 让 grid 1fr 精确控制列宽(否则 chg 长文字撑开单列) */
     min-width:0;
   }
-  [data-theme="dark"] .kpi{background:#0f1420;}
-  .kpi:hover{border-color:var(--accent); transform:translateY(-1px);}
-  .kpi .lbl{font-size:13px;color:var(--sub);line-height:1.3;}
-  .kpi .val{font-size:20px;font-weight:700;margin-top:2px;letter-spacing:-.01em;}
-  .kpi .chg{font-size:13px;line-height:1.4;
+  /* 只有 .kpi-pop(能点开浮层)才有 hover。普通 KPI 卡不可点,
+     给它 hover 底色等于骗人去点 —— 点了什么都不会发生。 */
+  @media (hover:hover){
+    .kpi.kpi-pop:hover{ background:var(--accent-soft); }
+  }
+  /* 标签最多两行:一行和三行的卡片并排时,下面的数字会落在不同的高度 */
+  .kpi .lbl{
+    font-size:12px;color:var(--muted);line-height:1.3;letter-spacing:.03em;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+    overflow:hidden; min-height:2.6em;
+  }
+  /* 数字不换行也不许截断,只能缩:14 位的金额在 145px 的卡里必须变小。
+     11cqi 是按"最多 14 个字符"反推的系数;不支持容器查询的浏览器
+     会忽略这一行,退回上一行的固定字号。 */
+  .kpi .val{font-size:26px;font-size:min(26px, 11cqi);font-weight:600;margin-top:6px;letter-spacing:-.02em;line-height:1.15;color:var(--ink);}
+  .kpi .chg{font-size:12.5px;line-height:1.6;color:var(--sub);
     /* chg 文字限 3 行(短 1 行 / 中 2 行 / 长 3 行),避免卡片被超长 chg 撑大 */
     display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;
     overflow:hidden; text-overflow:ellipsis;
-    margin-top:1px;
+    margin-top:6px;
   }
+  /* 整行涨跌色。上面那条 .kpi .chg 是 (0,2,0),会把 .up/.down 的
+     (0,1,0) 颜色吃掉 —— 涨跌一栏就变成了灰色。这里补两条同权重的。 */
+  .kpi .chg.up{ color:var(--up); }
+  .kpi .chg.down{ color:var(--down); }
   /* KPI 卡片可点击,hover 提示 */
   .kpi.kpi-pop{ cursor:pointer; }
+  .kpi.kpi-pop:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  /* 按下时整张卡缩一点点 —— 比换底色更快被感知,而且不影响已经读到的数字 */
+  .kpi.kpi-pop:active{ transform:scale(.985); }
   /* KPI popover 头部(label + value 一行) */
   .kpi-pop-head{
     display:flex; justify-content:space-between; align-items:baseline;
-    margin-bottom:8px; padding-bottom:8px;
-    border-bottom:1px dashed var(--line);
+    margin-bottom:10px; padding-bottom:10px;
+    border-bottom:1px solid var(--line-soft);
   }
   .kpi-pop-head .lbl{ font-size:12px; color:var(--muted); font-weight:500; }
   .kpi-pop-head .val{ font-size:15px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
@@ -408,11 +636,27 @@
   .impact-text .up{ color:var(--up); font-weight:600; }
   .impact-text .down{ color:var(--down); font-weight:600; }
 
-  footer{font-size:13px;color:var(--sub);text-align:center;padding:10px;}
-  .legend{font-size:13px;color:var(--sub);margin:-2px 0 6px;}
+  footer{
+    font-size:12px;color:var(--muted);text-align:center;padding:18px 10px 6px;
+    border-top:1px solid var(--line);margin-top:28px;letter-spacing:.04em;
+  }
+  .legend{font-size:12.5px;color:var(--muted);margin:-2px 0 6px;}
   .load-error{padding:30px 16px;text-align:center;color:var(--danger);font-size:15px;}
+  /* 数据校验失败时的提示条。它是"最后一层兜底":正常情况下 validate.py 已经在
+     提交前把坏数据拦住了,这里出现说明闸门漏了 —— 页面照常渲染,但明确告诉你 */
+  .data-banner{
+    margin:0 0 14px; padding:10px 14px; border-radius:12px;
+    background:#fdecea; color:#a4231a; border:1px solid #f3c4bd;
+    font-size:12.5px; line-height:1.6; cursor:help;
+  }
+  [data-theme="dark"] .data-banner{
+    background:rgba(255,107,129,.12); color:#ffb0bb; border-color:rgba(255,107,129,.38);
+  }
 
-  section{animation:fadeUp .3s ease both;}
+  /* 切页时整页淡入一次就够了,原来每个 section 各跑一遍 .3s。
+     页签是用来高频来回切的(而且有 URL、可以键盘),切一次等 300ms 不值得;
+     这里去掉,内容直接到位。 */
+  #content{ animation: fadeUp var(--t-pop) var(--ease-out) both; }
   /* 不能用 transform — 会让 section 成为 fixed 定位的 containing block,导致内部 popover 定位错位 */
   @keyframes fadeUp{from{opacity:0;} to{opacity:1;}}
 
@@ -441,36 +685,45 @@
     .table-wrap th, .table-wrap td{ padding:7px 9px; }
     .table-wrap thead th{ padding:8px 9px; font-size:12.5px; }
     /* section padding 加大(原 13px 15px → 16px 18px)— 内容呼吸感 */
-    section{ padding:16px 18px; border-radius:10px; }
+    section{ padding:16px 18px; }
     section h2{ font-size:17px; }
+    /* 眉题在窄屏排成一行横滑:7 条标签各占一行会把标题顶到一屏之外,
+       横向 swipe 是手机上最自然的"这里还有更多" */
+    header.top .tags-row{
+      flex-wrap:nowrap; overflow-x:auto; gap:14px;
+      padding-bottom:6px; margin-bottom:10px;
+      scrollbar-width:none; -webkit-overflow-scrolling:touch;
+    }
+    header.top .tags-row::-webkit-scrollbar{ display:none; }
+    header.top .tag{ flex:0 0 auto; white-space:nowrap; }
+    /* 报头:标题收到 26px,摘要 15px/1.8,窄屏才读得动 */
+    header.top{ padding-bottom:16px; margin-bottom:18px; }
+    header.top h1{ font-size:26px; line-height:1.24; margin-bottom:10px; }
+    header.top p{ font-size:15px; line-height:1.8; }
     /* 移动端 tag:点击弹浮窗显示全文,tag 本身完整显示+换行 */
     header.top .tag{
-      max-width:100%;
-      white-space:normal;
-      cursor:pointer;
-      padding:7px 12px; font-size:13.5px;
+      max-width:min(76vw, 420px); overflow:hidden; text-overflow:ellipsis;
+      white-space:nowrap; cursor:pointer;
+      padding:4px 9px; font-size:12px;
     }
-    /* 移动端 summary 展开按钮:居中、加大,方便点击 */
+    /* 移动端"阅读全文":保持胶囊,只放大点击区 */
     .summary-expand-wrap{
-      justify-content:center;
-      margin-top:18px;
+      justify-content:flex-start;
+      margin-top:16px;
     }
-    .summary-expand{
-      font-size:14.5px; padding:11px 26px; border-radius:24px;
-      box-shadow:0 3px 6px rgba(37,99,235,.22);
-    }
+    .summary-expand{ font-size:14px; padding:9px 18px; }   /* 手机上保持胶囊,只放大点击区 */
     /* 移动端 popover:占满 viewport,内部 scroll */
     .popover-body{
       max-width:calc(100vw - 32px);
       max-height:calc(100vh - 80px);
-      padding:14px 16px; font-size:14px;
+      padding:14px 16px; font-size:14px; border-radius:18px;
     }
     /* KPI banner / card — 只管卡片外观;列数/间距统一由文件末尾的
        KPI STRIP LADDER 按分辨率给,这里不要再写列数(见那里的说明) */
-    .kpi{ padding:12px 14px; min-height:90px; }
-    .kpi .lbl{ font-size:14px; }
-    .kpi .val{ font-size:21px; }
-    .kpi .chg{ font-size:13.5px; line-height:1.5; }
+    .kpi{ padding:12px 14px; min-height:92px; }
+    .kpi .lbl{ font-size:12px; }
+    .kpi .val{ font-size:24px; font-size:min(24px, 11cqi); }
+    .kpi .chg{ font-size:12.5px; line-height:1.55; }
     /* 移动端事件型 KPI:2 列网格 */
     .event-kpi-grid{ grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:10px; }
     .event-kpi{ padding:13px 14px; min-height:90px; }
@@ -503,16 +756,16 @@
     /* 整体字号 +1.5px,易读 */
     body{ font-size:15.5px; }
     /* section padding 加大,内容呼吸感 */
-    section{ padding:16px 18px; border-radius:12px; }
+    section{ padding:16px 18px; }
     section h2{ font-size:17px; margin-bottom:8px; }
     /* 1-col 网格:避免桌面 3-col 在移动屏过挤 */
     #content{ display:grid; grid-template-columns:minmax(0,1fr); gap:14px; }
     #content > section.span-2{grid-column:1; min-width:0; }
     /* KPI banner 的列数不在本段写,统一交给文件末尾的 KPI STRIP LADDER */
-    .kpi{ padding:14px 16px; min-height:96px; }
-    .kpi .lbl{ font-size:14.5px; }
-    .kpi .val{ font-size:22px; }
-    .kpi .chg{ font-size:14px; line-height:1.5; -webkit-line-clamp:4; }
+    .kpi{ padding:14px 16px; min-height:100px; }
+    .kpi .lbl{ font-size:12px; }
+    .kpi .val{ font-size:25px; font-size:min(25px, 11cqi); }
+    .kpi .chg{ font-size:12.5px; line-height:1.55; -webkit-line-clamp:4; }
     /* 表格:稍大字号 + padding */
     .table-wrap table{ font-size:13.5px; }
     .table-wrap th, .table-wrap td{ padding:8px 10px; }
@@ -526,8 +779,10 @@
     .event-kpi-title{ font-size:14px; }
     .event-kpi-time{ font-size:12.5px; }
     /* 触摸目标加大:tag / popover-trigger / 按钮 */
-    header.top .tag{ padding:7px 12px; font-size:13px; }
-    .summary-expand{ font-size:14.5px; padding:11px 24px; }
+    header.top h1{ font-size:30px; }
+    header.top .tag{ padding:4px 9px; font-size:12px; }
+    header.top .tag--long{ max-width:min(420px, 78vw); }
+    .summary-expand{ font-size:14px; padding:9px 18px; }
     /* popover 全屏 */
     .popover-body{
       max-width:calc(100vw - 32px);
@@ -536,7 +791,7 @@
     }
     /* 浮动 tab 字号加大 */
     .floating-tabs{ font-size:13px; }
-    .floating-tabs button{ padding:7px 12px; }
+    .floating-tabs button{ padding:0 14px; }
   }
 
   /* =================================================== */
@@ -548,16 +803,16 @@
     .floating-tabs{ display:flex; }
     .floating-meta{ display:flex; }
 
-    /* Wrap: 默认 60px 20px 20px,大屏覆盖 */
+    /* Wrap: 上边距要给顶栏让出 --bar + 呼吸,见 :root 的 --wrap-pad */
     .wrap{max-width:var(--content-max-w); padding:var(--wrap-pad);}
 
-    /* Hero: 紧凑 */
+    /* 报头 */
     header.top{
-      padding:14px 20px; border-radius:12px; margin-bottom:12px;
+      padding:0 0 20px; border-radius:0; margin-bottom:22px;
     }
-    header.top h1{font-size:21px; margin-bottom:6px;}
-    header.top p{font-size:14px; line-height:1.65;}
-    .tag{font-size:12.5px; padding:2px 10px;}
+    header.top h1{font-size:34px; margin-bottom:12px;}
+    header.top p{font-size:15.5px; line-height:1.85;}
+    .tag{font-size:11.5px;}
 
     /* KPI 卡片外观 + 段内非 banner 的 .kpi-row 基线(2 列)。
        banner(「一、盘前关键关注」这类 type:kpi 段)的列数按分辨率分档,
@@ -565,7 +820,7 @@
     .kpi-row{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; margin-top:0;}
     .kpi{padding:7px 10px;}
     .kpi .lbl{font-size:var(--kpi-lbl);}
-    .kpi .val{font-size:var(--kpi-val);}
+    .kpi .val{font-size:var(--kpi-val); font-size:min(var(--kpi-val), 11cqi);}
     .kpi .chg{font-size:var(--kpi-chg); line-height:1.4;}
 
     /* Content: 3-col grid 默认;992-1199 切 2-col 在下面覆盖
@@ -597,15 +852,15 @@
     /* Section 内部 */
     section{
       display:flex; flex-direction:column;
-      padding:var(--section-pad); border-radius:10px; margin-bottom:0;
+      padding:var(--section-pad); margin-bottom:0;
     }
-    section h2{font-size:var(--h2-size); margin-bottom:5px; flex:0 0 auto;}
-    section h2 .bar{width:3px; height:14px;}
+    section h2{font-size:var(--h2-size); margin-bottom:8px; flex:0 0 auto;}
+
 
     /* PC 表格(数字更大更清晰) */
     table{font-size:var(--table-size); flex:0 0 auto;}
-    thead th{padding:7px 9px; font-size:13px;}
-    th,td{padding:6px 9px;}
+    thead th{padding:8px 9px; font-size:12px;}
+    th,td{padding:7px 9px;}
 
     /* has-chart: chart 高度从变量取 */
     section.has-chart > .body{
@@ -655,44 +910,44 @@
   /* 大屏 1600-1919: 已有样式,变量值已经是 1920 的 */
   @media (min-width: 1600px) and (max-width: 1919px) {
     :root {
-      --wrap-pad: 60px 24px 24px;
+      --wrap-pad: 78px 28px 56px;
       --section-pad: 13px 15px;
       --chart-h: 250px;
-      --kpi-val: 20px;
+      --kpi-val: 25px;
       --kpi-chg: 12.5px;
       --kpi-lbl: 13px;
       --table-size: 14px;
-      --h2-size: 15.5px;
+      --h2-size: 19px;
     }
   }
 
   /* 1200-1399: 笔记本标准,3-col 压缩 */
   @media (min-width: 1200px) and (max-width: 1399px) {
     :root {
-      --wrap-pad: 56px 18px 18px;
+      --wrap-pad: 74px 22px 48px;
       --section-pad: 11px 13px;
       --chart-h: 220px;
-      --kpi-val: 18px;
+      --kpi-val: 23px;
       --kpi-chg: 12px;
       --kpi-lbl: 12.5px;
       --kpi-min: 105px;
       --table-size: 13.5px;
-      --h2-size: 15px;
+      --h2-size: 18px;
     }
   }
 
   /* 992-1199: 小桌面,切 2-col + 压缩 */
   @media (min-width: 992px) and (max-width: 1199px) {
     :root {
-      --wrap-pad: 50px 16px 16px;
+      --wrap-pad: 68px 20px 44px;
       --section-pad: 10px 12px;
       --chart-h: 200px;
-      --kpi-val: 17px;
+      --kpi-val: 21px;
       --kpi-chg: 11.5px;
       --kpi-lbl: 12px;
       --kpi-min: 100px;
       --table-size: 13px;
-      --h2-size: 14.5px;
+      --h2-size: 17px;
     }
     /* 切 2-col: 外层 #content 改 2-col;KPI banner 2×3 由末尾的 LADDER 给 */
     #content{ grid-template-columns: repeat(2, minmax(0,1fr)); }
@@ -701,15 +956,15 @@
   /* 768-991: 平板,2-col 更紧凑 */
   @media (min-width: 768px) and (max-width: 991px) {
     :root {
-      --wrap-pad: 44px 14px 14px;
+      --wrap-pad: 62px 16px 40px;
       --section-pad: 9px 11px;
       --chart-h: 180px;
-      --kpi-val: 16px;
+      --kpi-val: 20px;
       --kpi-chg: 11px;
       --kpi-lbl: 11.5px;
       --kpi-min: 95px;
       --table-size: 12.5px;
-      --h2-size: 14px;
+      --h2-size: 16px;
     }
     #content{ grid-template-columns: repeat(2, minmax(0,1fr)); }
   }
@@ -757,9 +1012,223 @@
   @media (min-width: 1200px) and (max-width: 1399px) { .chart.chart-line{ height:280px !important; } }
   @media (min-width: 992px)  and (max-width: 1199px) { .chart.chart-line{ height:260px !important; } }
   @media (min-width: 768px)  and (max-width: 991px)  { .chart.chart-line{ height:240px !important; } }
+
+  /* 五、股指期货表:「较 11/02 变化」那列是整句话,260px 宽要折 4 行。
+     它是表里最高的一格,于是每一行都被撑到 106px —— 而这一列在 1/3 宽的
+     卡里根本在视口外,看得见的四列只占 45px,剩下 60px 全是空行。
+     放宽到 440 之后那一格只折 2–3 行,行高回到 83,整段矮了 340px。 */
+  #sec-futures .table-wrap td.wrap{ max-width:440px; }
+
+  /* ===================================================
+     事件卡段(六、本周关注)—— 横跨 2 列
+     ----------------------------------------------------
+     这一段的内容是"长标题 + 长正文 + 时间",全是文字。放在 1/3 宽
+     那一列里,每行只放得下 2 张卡、每张 ~209px,正文四行就只剩一句
+     半。它右边那 1/3 是空的 —— 把这段横过来占掉,卡片宽一倍,
+     同样四行能装下的字也多一倍。
+     只跨 2 列而不是 3 列:五段还在它左边,跨 3 列会把五挤到单独一行,
+     留下一整列的空白。 */
+  @media (min-width: 768px){
+    /* span 2 + align-self:start:
+       跨 2 列之后它比左边的「五」矮(五 1700px / 六 1174px),
+       默认 stretch 会把它拉成 1700,底下留一块 500px 的空白卡面 ——
+       那看起来像卡片没渲染完。让它保持自己的高度,空白落在卡片外面。 */
+    #content > section.event-sec{ grid-column: span 2; align-self: start; }
+    section.event-sec .event-kpi-grid{
+      grid-template-columns:repeat(auto-fill, minmax(250px,1fr));
+    }
+  }
+  @media (min-width: 1200px){
+    /* 920px 宽 ⇒ 两列 442px。minmax(380px) 是关键:降到 290 会排出
+       三列 289px —— 卡片反而比现在更窄,字更少。 */
+    section.event-sec .event-kpi-grid{
+      grid-template-columns:repeat(auto-fill, minmax(380px,1fr));
+    }
+    /* 卡片宽了,同样的行数装得下更多字,把省略号往后推 */
+    section.event-sec .event-kpi-title{ -webkit-line-clamp:4; }
+    section.event-sec .event-kpi-body{ -webkit-line-clamp:5; }
+  }
+
+  /* ===================================================
+     premarket 的两栏排版
+     ----------------------------------------------------
+     这一页的栏目高矮差得太多:二、七、八 很高,三+四、五+六 各叠成
+     一列塞在三分之一宽里,右侧留出大片空白,整页对不齐。
+     改成两栏:二独占一整行,三/四、五/六、七/八 各占半行 —— 每一格
+     的宽度都是二的一半,横向的边从头到尾是一条线。
+     .stack-pair 原本把(三,四)包成一个格子,这里用 display:contents
+     把包装层"拆掉",两个 section 直接变成并排的网格项,模板不用动。
+     =================================================== */
+  /* 只在 ≥1200 用这套三栏+subgrid:992-1199 全站本来就是两栏,
+     强行三栏会把 300px 宽的表格挤成横向滚动 */
+  @media (min-width: 1200px){
+    /* 仍然是三栏:第一列 二,第二列 三+四,第三列 五+六。
+       不同的是「行」是共享的 —— .stack-pair 用 subgrid 把内部两行
+       直接对齐到父网格的行边界,于是 三 和 五 的顶边、四 和 六 的顶边、
+       以及三列的底边,都落在同一条线上。 */
+    body[data-page="premarket"] #content{ grid-template-columns:repeat(3, minmax(0,1fr)); }
+    body[data-page="premarket"] #content > #sec-us_equity{ grid-row:span 2; }
+    body[data-page="premarket"] .stack-pair{
+      display:grid; grid-template-rows:subgrid; grid-row:span 2;
+      align-self:stretch; gap:12px;
+    }
+  }
+
+  /* ===================================================
+     交互基线
+     ----------------------------------------------------
+     这一页原先没有任何 :focus-visible、只有 1 处 :active,
+     键盘用户和触摸用户都拿不到反馈。这里统一补上,
+     并且把 :hover 全部收进 hover:hover —— 触摸屏上点完
+     会一直停在 hover 态,看起来像卡住了。 */
+  :where(button, a, summary, [tabindex]):focus-visible{
+    outline:2px solid var(--accent);
+    outline-offset:2px;
+  }
+  /* 系统级无障碍开关:iOS 在设置里提供,web 上要自己接 */
+  @media (prefers-reduced-transparency: reduce){
+    .floating-tabs{ background:var(--bg); backdrop-filter:none; -webkit-backdrop-filter:none; border-bottom:1px solid var(--line); }
+    [data-theme="dark"] .mobile-tabs{ background:#16162a; backdrop-filter:none; -webkit-backdrop-filter:none; }
+    section, .kpi{ backdrop-filter:none; -webkit-backdrop-filter:none; }
+  }
+  @media (prefers-contrast: more){
+    section, .kpi{ border:1px solid var(--ink); box-shadow:none; }
+    header.top .tag{ border:1px solid var(--ink); }
+    thead th{ border-bottom-color:var(--ink); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{
+      animation-duration:.001ms !important;
+      animation-iteration-count:1 !important;
+      transition-duration:.001ms !important;
+    }
+  }
+
+
+  /* ===================================================
+     极光层(仅夜间)
+     ----------------------------------------------------
+     底色是近乎纯黑的蓝,光来自三个缓慢漂移的径向渐变球。
+     只用 transform 做动画 —— 预合成一层,交给 GPU,
+     主线程再忙也不掉帧;不动 background-position,不叠 blur 滤镜。
+     三个球周期不同(42s / 54s / 66s),永远不会同步成一个节拍。
+     =================================================== */
+  .aurora{
+    position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden;
+    opacity:0; transition:opacity .5s var(--ease-out);
+  }
+  [data-theme="dark"] .aurora{ opacity:1; }
+  .aurora i{
+    position:absolute; display:block; border-radius:50%;
+    mix-blend-mode:screen; will-change:transform;
+    animation-timing-function:ease-in-out; animation-iteration-count:infinite;
+  }
+  .aurora i:nth-child(1){
+    left:-22%; top:-28%; width:min(78vw,1180px); aspect-ratio:1;
+    background:radial-gradient(closest-side, rgba(139,124,255,.40), rgba(139,124,255,0) 72%);
+    animation-name:auroraA; animation-duration:28s;
+  }
+  .aurora i:nth-child(2){
+    right:-22%; top:-16%; width:min(62vw,940px); aspect-ratio:1;
+    background:radial-gradient(closest-side, rgba(34,211,238,.28), rgba(34,211,238,0) 70%);
+    animation-name:auroraB; animation-duration:38s;
+  }
+  .aurora i:nth-child(3){
+    left:16%; bottom:-34%; width:min(70vw,1060px); aspect-ratio:1;
+    background:radial-gradient(closest-side, rgba(255,92,168,.24), rgba(255,92,168,0) 70%);
+    animation-name:auroraC; animation-duration:48s;
+  }
+  /* 位移用【元素自身的百分比】:光球越大,走的距离越长(1180px 的球走 26% = 300px)。
+     缩放只留 ±5%,它以前是 16%,把位移整个盖住了 —— 看起来像"原地呼吸"而不是"在漂"。
+     每段路径都分成三停,不原路返回,读起来是 wandering 而不是 ping-pong。 */
+  @keyframes auroraA{
+    0%   { transform:translate3d(-8%,-6%,0) scale(1.02); }
+    45%  { transform:translate3d(14%,10%,0) scale(1.07); }
+    75%  { transform:translate3d(26%,2%,0)  scale(1.0); }
+    100% { transform:translate3d(-8%,-6%,0) scale(1.02); }
+  }
+  @keyframes auroraB{
+    0%   { transform:translate3d(8%,-8%,0)  scale(1.05); }
+    40%  { transform:translate3d(-16%,9%,0) scale(.96); }
+    70%  { transform:translate3d(-28%,-3%,0) scale(1.03); }
+    100% { transform:translate3d(8%,-8%,0)  scale(1.05); }
+  }
+  @keyframes auroraC{
+    0%   { transform:translate3d(-12%,4%,0)  scale(1.0); }
+    35%  { transform:translate3d(6%,-12%,0)  scale(1.08); }
+    70%  { transform:translate3d(22%,-4%,0)  scale(1.01); }
+    100% { transform:translate3d(-12%,4%,0)  scale(1.0); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .aurora i{ animation:none !important; }
+  }
+
+  /* ===================================================
+     夜间覆盖:冷白的"白卡"换成"磨砂玻璃"
+     =================================================== */
+  [data-theme="dark"] body{ background:#0a0a12; }
+  [data-theme="dark"] .wrap{ position:relative; z-index:1; }
+
+  [data-theme="dark"] .floating-tabs{
+    background:var(--float-bg);
+    backdrop-filter:blur(20px) saturate(140%); -webkit-backdrop-filter:blur(20px) saturate(140%);
+  }
+  /* 夜间页签跟白天同一个模式:选中项就是一枚胶囊。
+     白天是深色药丸,夜间是"玻璃里一块更亮的玻璃" —— 换的是材质,不是行为。
+     (原来夜间单独改成下划线,同一个控件两套"选中"的表达,
+      切到夜间第一眼会认不出选的是哪个。) */
+  [data-theme="dark"] .floating-tabs button:hover{ background:rgba(255,255,255,.07); color:#fff; }
+  [data-theme="dark"] .floating-tabs button.active{
+    background:rgba(255,255,255,.16); color:#fff;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.12);
+  }
+
+  /* 吸顶栏必须完全不透明。92% 的深色看着"够黑",但那 8% 会让滚过去的
+     正文在栏上留一层灰影 —— 亮底上看不出来,深底上一眼就是脏的。 */
+  [data-theme="dark"] .mobile-tabs{
+    background:var(--surface);
+  }
+  [data-theme="dark"] .mobile-tabs button.active{
+    background:rgba(255,255,255,.14); color:#fff; box-shadow:none;
+  }
+
+  [data-theme="dark"] header.top h1{
+    background:linear-gradient(92deg,#ffffff 42%, #c9bfff 78%, #a5ecf6 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  [data-theme="dark"] header.top .tag{ background:rgba(255,255,255,.11); color:var(--sub); }
+  [data-theme="dark"] header.top .tag:hover{ background:rgba(139,124,255,.18); color:#fff; }
+
+  [data-theme="dark"] section{
+    background:var(--card);
+    backdrop-filter:blur(18px) saturate(130%); -webkit-backdrop-filter:blur(18px) saturate(130%);
+    /* 顶部 1px 内高光 = 玻璃上沿的反光。没有它,卡片在极光最亮处
+       会糊成一块,分不出"这是浮在光上的面"还是"光本身暗了一点" */
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 24px 48px -36px rgba(0,0,0,.9);
+  }
+  [data-theme="dark"] section.kpi-strip{ background:transparent; border:0; box-shadow:none; backdrop-filter:none; }
+  [data-theme="dark"] .kpi{ background:rgba(255,255,255,.045); border-color:var(--line); box-shadow:none; }
+  [data-theme="dark"] .kpi.kpi-pop:hover{ background:rgba(255,255,255,.09); }
+  [data-theme="dark"] .kpi .val{ color:#fff; }
+  [data-theme="dark"] .event-kpi{ background:rgba(255,255,255,.03); }
+  [data-theme="dark"] thead th{ border-bottom:1px solid var(--rule); }
+  [data-theme="dark"] .popover-body{
+    border-color:rgba(255,255,255,.22);
+    /* 背景已经不透明,backdrop-filter 看不到任何东西,省掉这份合成开销 */
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.07), 0 32px 64px -28px rgba(0,0,0,.92),
+               0 0 0 1px rgba(255,255,255,.045);
+  }
+  /* 主操作在两套主题里都必须是"实心主色"。夜间原来是描边+淡紫底,
+     同一个按钮白天实心、夜间描边,重量差了一档 —— 那是最该被看见的那个按钮。 */
+  [data-theme="dark"] .summary-expand{
+    background:var(--accent); color:#0a0a12; font-weight:650;
+  }
 </style>
 </head>
 <body>
+
+<!-- 夜间背景:三团缓慢漂移的光,日间 opacity:0 -->
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
 
 <!-- 桌面端浮动卡片:左上 tab 切换 + 右上时间戳/主题 -->
 <aside class="floating-tabs" id="floating-tabs" aria-label="页面切换"></aside>
@@ -784,7 +1253,9 @@
 
 <!-- render.js 改版时同步 bump ?v=（Pages 的 cache-control 是 max-age=600，
      不带版本号的话浏览器可能拿旧脚本，页面看起来"改了没生效"） -->
-<script src="assets/render.js?v=20261029b"></script>
+<!-- 校验器放在渲染器之前:渲染时要用 MVValidate.showBanner() -->
+<script src="assets/validate.js?v=20261105a"></script>
+<script src="assets/render.js?v=20261105e"></script>
 </body>
 </html>
 <!-- mavis-touched 1787847235 -->
